@@ -325,6 +325,22 @@ body::before {
 .stat-box.green .stat-box-v { color: var(--green); }
 .stat-box.red   .stat-box-v { color: var(--red); }
 
+.stat-section-lbl {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Cormorant Garamond', serif; font-size: 16px;
+  color: var(--tx1); margin: 0 0 10px; letter-spacing: 0.3px;
+}
+.sl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sl-dot.green { background: var(--green); box-shadow: 0 0 6px rgba(39,201,122,0.5); }
+.sl-dot.red   { background: var(--red);   box-shadow: 0 0 6px rgba(232,85,85,0.5); }
+.sl-count {
+  margin-left: auto; font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 600;
+  background: var(--glass); border: 1px solid var(--bd);
+  border-radius: 20px; padding: 2px 10px; color: var(--tx1);
+}
+.stat-box-v.green { color: var(--green); }
+.stat-box-v.gold  { color: var(--g1); }
 .sec-lbl { font-family: 'Cormorant Garamond', serif; font-size: 17px; color: var(--tx1); margin: 20px 0 10px; letter-spacing: 0.4px; }
 .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--bd), transparent); margin: 18px 0; }
 
@@ -632,18 +648,63 @@ body::before {
 
   <!-- ══ STATS PAGE ══ -->
   <div class="pg" id="pg-stats">
+    <!-- Grand total hero -->
     <div class="stat-hero">
       <div class="stat-hero-l">Grand Total Outstanding</div>
       <div class="stat-hero-v" id="s-grand">₹0</div>
       <div class="stat-hero-s" id="s-sub">0 loans tracked</div>
     </div>
-    <div class="stat-grid">
-      <div class="stat-box green"><div class="stat-box-v" id="s-act">0</div><div class="stat-box-l">Active Loans</div></div>
-      <div class="stat-box red">  <div class="stat-box-v" id="s-cl">0</div> <div class="stat-box-l">Closed Loans</div></div>
-      <div class="stat-box">      <div class="stat-box-v" id="s-p">₹0</div> <div class="stat-box-l">Total Principal</div></div>
-      <div class="stat-box">      <div class="stat-box-v" id="s-i">₹0</div> <div class="stat-box-l">Total Interest</div></div>
-      <div class="stat-box">      <div class="stat-box-v" id="s-ar">0%</div><div class="stat-box-l">Avg Rate/Month</div></div>
-      <div class="stat-box">      <div class="stat-box-v" id="s-am">0</div> <div class="stat-box-l">Avg Months</div></div>
+
+    <!-- ACTIVE block -->
+    <div class="stat-section-lbl" id="sl-active">
+      <span class="sl-dot green"></span>Active Loans
+      <span class="sl-count" id="s-act-count">0</span>
+    </div>
+    <div class="stat-grid" style="margin-bottom:6px">
+      <div class="stat-box">
+        <div class="stat-box-l">Principal</div>
+        <div class="stat-box-v" id="s-act-p">₹0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-l">Interest Till Today</div>
+        <div class="stat-box-v green" id="s-act-i">₹0</div>
+      </div>
+    </div>
+    <div class="stat-grid" style="margin-bottom:14px">
+      <div class="stat-box">
+        <div class="stat-box-l">Total Due (Principal + Interest)</div>
+        <div class="stat-box-v" id="s-act-total">₹0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-l">Avg Rate / Month</div>
+        <div class="stat-box-v" id="s-act-rate">0%</div>
+      </div>
+    </div>
+
+    <!-- CLOSED block -->
+    <div class="stat-section-lbl" id="sl-closed">
+      <span class="sl-dot red"></span>Closed Loans
+      <span class="sl-count" id="s-cl-count">0</span>
+    </div>
+    <div class="stat-grid" style="margin-bottom:6px">
+      <div class="stat-box">
+        <div class="stat-box-l">Principal Returned</div>
+        <div class="stat-box-v" id="s-cl-p">₹0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-l">Interest Earned</div>
+        <div class="stat-box-v gold" id="s-cl-i">₹0</div>
+      </div>
+    </div>
+    <div class="stat-grid" style="margin-bottom:14px">
+      <div class="stat-box">
+        <div class="stat-box-l">Avg Months (Closed)</div>
+        <div class="stat-box-v" id="s-cl-months">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-l">Avg Rate / Month</div>
+        <div class="stat-box-v" id="s-cl-rate">0%</div>
+      </div>
     </div>
     <div class="divider"></div>
     <div class="sec-lbl">📐 Month Calculation Rule</div>
@@ -1098,33 +1159,59 @@ function renderLoans() {
 }
 
 function renderStats() {
-  let tp=0, ti=0, tm=0, mc=0, sr=0;
-  loans.forEach(l => {
-    const effRd2 = l.releaseDate || (l.status==='Active' ? new Date().toISOString().split('T')[0] : null);
-    const m = calcMonths(l.loanDate, effRd2);
-    const i = m !== null ? calcInterest(l.amount, l.rate, m) : 0;
-    tp += l.amount; ti += i; sr += l.rate;
-    if (m !== null) { tm += m; mc++; }
-  });
-  const grand = tp + ti;
-  const act   = loans.filter(l => l.status === 'Active').length;
-  const cl    = loans.filter(l => l.status === 'Closed').length;
+  const today = new Date().toISOString().split('T')[0];
 
-  // Header metrics
+  // Separate active vs closed
+  const actLoans = loans.filter(l => l.status === 'Active');
+  const clLoans  = loans.filter(l => l.status === 'Closed');
+
+  // Active totals — interest calculated till today
+  let actP=0, actI=0, actSR=0;
+  actLoans.forEach(l => {
+    const rd = l.releaseDate || today;
+    const m  = calcMonths(l.loanDate, rd);
+    const i  = m !== null ? calcInterest(l.amount, l.rate, m) : 0;
+    actP  += l.amount;
+    actI  += i;
+    actSR += l.rate;
+  });
+
+  // Closed totals — interest actually earned
+  let clP=0, clI=0, clM=0, clMC=0, clSR=0;
+  clLoans.forEach(l => {
+    const m = l.releaseDate ? calcMonths(l.loanDate, l.releaseDate) : null;
+    const i = m !== null ? calcInterest(l.amount, l.rate, m) : 0;
+    clP  += l.amount;
+    clI  += i;
+    clSR += l.rate;
+    if (m !== null) { clM += m; clMC++; }
+  });
+
+  const grand = actP + actI + clP + clI;
+
+  // ── Header metrics bar (totals across all) ──
   $('mc').textContent = loans.length;
-  $('mp').textContent = inr(tp);
-  $('mi').textContent = inr(ti);
+  $('mp').textContent = inr(actP + clP);
+  $('mi').textContent = inr(actI + clI);
   $('mt').textContent = inr(grand);
 
-  // Stats page
-  $('s-grand').textContent = inr(grand);
-  $('s-sub').textContent   = `${loans.length} loan${loans.length !== 1 ? 's' : ''} tracked`;
-  $('s-act').textContent   = act;
-  $('s-cl').textContent    = cl;
-  $('s-p').textContent     = inr(tp);
-  $('s-i').textContent     = inr(ti);
-  $('s-ar').textContent    = loans.length ? (sr / loans.length).toFixed(1) + '%' : '0%';
-  $('s-am').textContent    = mc ? (tm / mc).toFixed(1) : '0';
+  // ── Stats page ──
+  $('s-grand').textContent   = inr(grand);
+  $('s-sub').textContent     = `${actLoans.length} active · ${clLoans.length} closed`;
+
+  // Active block
+  $('s-act-count').textContent = actLoans.length;
+  $('s-act-p').textContent     = inr(actP);
+  $('s-act-i').textContent     = inr(actI);
+  $('s-act-total').textContent = inr(actP + actI);
+  $('s-act-rate').textContent  = actLoans.length ? (actSR / actLoans.length).toFixed(1) + '%' : '0%';
+
+  // Closed block
+  $('s-cl-count').textContent  = clLoans.length;
+  $('s-cl-p').textContent      = inr(clP);
+  $('s-cl-i').textContent      = inr(clI);
+  $('s-cl-months').textContent = clMC ? (clM / clMC).toFixed(1) : '0';
+  $('s-cl-rate').textContent   = clLoans.length ? (clSR / clLoans.length).toFixed(1) + '%' : '0%';
 }
 
 function render() { renderLoans(); renderStats(); }
