@@ -708,8 +708,8 @@ body::before {
           <input class="fi" id="f-ld" type="date" oninput="livePreview()"/>
         </div>
         <div class="fg">
-          <label class="fl">Release Date</label>
-          <input class="fi" id="f-rd" type="date" oninput="livePreview()"/>
+          <label class="fl" id="f-rd-label">Release Date <span id="f-rd-opt" style="color:var(--tx2);font-weight:400;text-transform:none;letter-spacing:0">(optional for Active)</span></label>
+          <input class="fi" id="f-rd" type="date" oninput="livePreview()" placeholder="Leave blank if Active"/>
         </div>
       </div>
       <div class="frow">
@@ -722,7 +722,7 @@ body::before {
           <input class="fi" id="f-rate" type="number" step="0.01" placeholder="2.0" oninput="livePreview()"/>
         </div>
       </div>
-      <div class="note-box">📅 Release Date <strong>≥ 5th</strong> of a month = that month counts.</div>
+      <div class="note-box">📅 Release Date <strong>≥ 5th</strong> of a month = that month counts. Leave blank for <strong style="color:var(--green)">Active</strong> loans — interest calculated till today.</div>
       <div class="preview-box">
         <div class="preview-lbl">✦ Live Calculation</div>
         <div class="preview-grid">
@@ -733,7 +733,7 @@ body::before {
       </div>
       <div class="fg">
         <label class="fl">Status</label>
-        <select class="fi" id="f-status">
+        <select class="fi" id="f-status" onchange="onStatusChange()">
           <option value="Active">Active</option>
           <option value="Closed">Closed</option>
         </select>
@@ -776,7 +776,8 @@ body::before {
         </div>
         <div class="note-box" style="margin-bottom:16px">
           <strong style="color:var(--g1)">Expected columns (any order):</strong><br/>
-          Loan Number · Loan Date · Release Date · Amount · Interest Rate · Status<br/>
+          Loan Number · Loan Date · Amount · Interest Rate · Status<br/>
+          Release Date optional for Active loans<br/>
           Dates: <strong>DD-MM-YYYY</strong>, <strong>DD/MM/YYYY</strong> or <strong>YYYY-MM-DD</strong>
         </div>
         <button class="btn-primary" id="u1-next" style="display:none" onclick="goMapStep()">Next — Map Columns →</button>
@@ -1058,7 +1059,8 @@ function renderLoans() {
   }
 
   el.innerHTML = list.map((l, i) => {
-    const m        = calcMonths(l.loanDate, l.releaseDate);
+    const effRd    = l.releaseDate || (l.status==='Active' ? new Date().toISOString().split('T')[0] : null);
+    const m        = calcMonths(l.loanDate, effRd);
     const interest = m !== null ? calcInterest(l.amount, l.rate, m) : null;
     const total    = interest !== null ? l.amount + interest : null;
     const isActive = l.status === 'Active';
@@ -1071,7 +1073,7 @@ function renderLoans() {
           <div class="card-dates">
             <span>${fmtDate(l.loanDate)}</span>
             <span class="card-arrow">→</span>
-            <span>${fmtDate(l.releaseDate)}</span>
+            <span>${l.releaseDate ? fmtDate(l.releaseDate) : (l.status==='Active' ? '<span style="color:var(--green);font-weight:600">Ongoing</span>' : '—')}</span>
           </div>
         </div>
         <span class="badge ${isActive ? 'active' : 'closed'}">${l.status}</span>
@@ -1098,7 +1100,8 @@ function renderLoans() {
 function renderStats() {
   let tp=0, ti=0, tm=0, mc=0, sr=0;
   loans.forEach(l => {
-    const m = calcMonths(l.loanDate, l.releaseDate);
+    const effRd2 = l.releaseDate || (l.status==='Active' ? new Date().toISOString().split('T')[0] : null);
+    const m = calcMonths(l.loanDate, effRd2);
     const i = m !== null ? calcInterest(l.amount, l.rate, m) : 0;
     tp += l.amount; ti += i; sr += l.rate;
     if (m !== null) { tm += m; mc++; }
@@ -1138,20 +1141,30 @@ window.openLoanSheet = function(loan = null) {
   $('f-amt').value    = loan ? loan.amount      : '';
   $('f-rate').value   = loan ? loan.rate        : '';
   $('f-status').value = loan ? loan.status      : 'Active';
+  const opt = $('f-rd-opt'); if(opt) opt.style.display = (loan && loan.status==='Closed') ? 'none' : 'inline';
   livePreview();
   $('loan-ov').classList.add('open');
   setTimeout(() => $('f-no').focus(), 350);
 };
 window.closeLoanSheet = function() { $('loan-ov').classList.remove('open'); editId = null; };
 
+window.onStatusChange = function() {
+  const status = $('f-status').value;
+  const opt = $('f-rd-opt');
+  if (opt) opt.style.display = status === 'Closed' ? 'none' : 'inline';
+  livePreview();
+};
+
 window.livePreview = function() {
-  const ld  = $('f-ld').value, rd = $('f-rd').value;
-  const amt = parseFloat($('f-amt').value) || 0;
-  const rt  = parseFloat($('f-rate').value) || 0;
-  const m   = calcMonths(ld, rd);
-  const i   = (m !== null && amt && rt) ? calcInterest(amt, rt, m) : null;
-  const tot = i !== null ? amt + i : null;
-  $('pv-m').textContent = m !== null ? m : '—';
+  const ld     = $('f-ld').value;
+  const status = $('f-status').value;
+  const rd     = $('f-rd').value || (status === 'Active' ? new Date().toISOString().split('T')[0] : '');
+  const amt    = parseFloat($('f-amt').value) || 0;
+  const rt     = parseFloat($('f-rate').value) || 0;
+  const m      = calcMonths(ld, rd);
+  const i      = (m !== null && amt && rt) ? calcInterest(amt, rt, m) : null;
+  const tot    = i !== null ? amt + i : null;
+  $('pv-m').textContent = m !== null ? (rd && !$('f-rd').value && status==='Active' ? m+'*' : m) : '—';
   $('pv-i').textContent = inr(i);
   $('pv-t').textContent = inr(tot);
 };
@@ -1165,7 +1178,8 @@ window.saveLoan = async function() {
   const status = $('f-status').value;
 
   if (!no)                  { toast('⚠️ Enter Loan Number'); return; }
-  if (!ld || !rd)           { toast('⚠️ Select both dates'); return; }
+  if (!ld)                  { toast('⚠️ Select Loan Date'); return; }
+  if (!rd && status === 'Closed') { toast('⚠️ Release Date required for Closed loans'); return; }
   if (isNaN(amt) || amt<=0) { toast('⚠️ Enter valid amount'); return; }
   if (isNaN(rate)||rate<=0) { toast('⚠️ Enter valid rate'); return; }
 
@@ -1231,7 +1245,7 @@ let rawRows=[], xlsHdrs=[], parsedRows=[];
 const FIELDS = [
   { key:'name',        label:'Loan Number',   req:true,  aliases:['loan number','loan no','loan_number','loanno','id','loan id'] },
   { key:'loanDate',    label:'Loan Date',     req:true,  aliases:['loan date','loan_date','loandate','date','start date','from date'] },
-  { key:'releaseDate', label:'Release Date',  req:true,  aliases:['release date','release_date','releasedate','end date','to date','closing date','due date'] },
+  { key:'releaseDate', label:'Release Date',  req:false, aliases:['release date','release_date','releasedate','end date','to date','closing date','due date'] },
   { key:'amount',      label:'Amount (₹)',    req:true,  aliases:['amount','loan amount','principal','principal amount','amt'] },
   { key:'rate',        label:'Rate (%/month)',req:true,  aliases:['rate','interest rate','rate %','rate per month','monthly rate','int rate','interest'] },
   { key:'status',      label:'Status',        req:false, aliases:['status','loan status','state'] },
@@ -1344,9 +1358,11 @@ window.goPreviewStep = function() {
     const nm  = String(g('name')).trim() || ('ROW-' + (idx+2));
     const st  = /close/i.test(String(g('status'))) ? 'Closed' : 'Active';
     const errs = [];
-    if (!ld) errs.push('Loan Date'); if (!rd) errs.push('Release Date');
+    if (!ld) errs.push('Loan Date');
+    if (!rd && st === 'Closed') errs.push('Release Date (required for Closed)');
     if (isNaN(amt)||amt<=0) errs.push('Amount'); if (isNaN(rt)||rt<=0) errs.push('Rate');
-    const months   = (ld&&rd) ? calcMonths(ld,rd) : null;
+    const effRd3   = rd || (st==='Active' ? new Date().toISOString().split('T')[0] : null);
+    const months   = (ld&&effRd3) ? calcMonths(ld,effRd3) : null;
     const interest = (months!==null&&!isNaN(amt)&&!isNaN(rt)) ? calcInterest(amt,rt,months) : null;
     return { id:uid(), name:nm, loanDate:ld, releaseDate:rd, amount:amt, rate:rt, status:st,
              months, interest, ok: errs.length===0, errs };
