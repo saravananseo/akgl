@@ -91,7 +91,7 @@ body::before {
   background: linear-gradient(180deg, rgba(8,6,1,0.98) 0%, rgba(15,12,2,0.95) 100%);
   backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--bd);
-  padding-top: 52px;
+  padding-top: 15px;
 }
 .hdr-row1 {
   display: flex; align-items: center; justify-content: space-between;
@@ -577,6 +577,39 @@ body::before {
   z-index: 600; box-shadow: var(--shadow);
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ════ PIN LOGIN & ROLES ════ */
+.pin-ov {
+  display:none; position:fixed; inset:0; z-index:600;
+  background:var(--bg0); align-items:center; justify-content:center;
+  padding:24px; flex-direction:column;
+}
+.pin-ov.open{display:flex;}
+.pin-logo{width:80px;height:80px;border-radius:22px;margin-bottom:20px;box-shadow:0 0 40px rgba(212,161,42,0.2);}
+.pin-title{font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--g1);margin-bottom:4px;text-align:center;}
+.pin-sub{font-size:12px;color:var(--tx2);margin-bottom:32px;text-align:center;letter-spacing:0.5px;}
+.pin-role-row{display:flex;gap:10px;margin-bottom:28px;}
+.pin-role-btn{flex:1;padding:12px 8px;border-radius:var(--rs);background:var(--glass);border:1.5px solid var(--bd);color:var(--tx1);font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;text-align:center;}
+.pin-role-btn.sel{background:rgba(212,161,42,0.1);border-color:var(--g1);color:var(--g1);box-shadow:0 0 16px rgba(212,161,42,0.15);}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin-bottom:28px;}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--bd);background:transparent;transition:all 0.2s;}
+.pin-dot.filled{background:var(--g1);border-color:var(--g1);box-shadow:0 0 10px rgba(212,161,42,0.5);}
+.pin-dot.shake{animation:pinShake 0.4s ease;}
+@keyframes pinShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:280px;}
+.pin-key{height:64px;border-radius:var(--r);background:rgba(255,255,255,0.04);border:1px solid var(--bd);color:var(--tx0);font-size:22px;font-family:'Cormorant Garamond',serif;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s,transform 0.1s;-webkit-tap-highlight-color:transparent;}
+.pin-key:active{background:rgba(212,161,42,0.12);transform:scale(0.92);}
+.pin-key.del{font-size:18px;color:var(--tx1);}
+.pin-key.empty{background:none;border-color:transparent;pointer-events:none;}
+.pin-err{font-size:12px;color:var(--red);margin-top:16px;min-height:18px;text-align:center;font-weight:600;}
+.role-badge{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-top:4px;display:inline-block;}
+.role-badge.admin{background:rgba(212,161,42,0.12);color:var(--g1);border:1px solid rgba(212,161,42,0.3);}
+.role-badge.staff{background:rgba(91,141,239,0.12);color:var(--blue);border:1px solid rgba(91,141,239,0.3);}
+.role-row{display:flex;align-items:center;justify-content:space-between;background:var(--glass);border:1px solid var(--bd);border-radius:var(--rs);padding:14px 16px;margin-bottom:10px;}
+.role-row-left{display:flex;flex-direction:column;gap:3px;}
+.role-row-name{font-size:14px;font-weight:600;color:var(--tx0);}
+.role-row-pin{font-size:11px;color:var(--tx2);letter-spacing:1px;}
+.role-row-right{display:flex;gap:8px;align-items:center;}
 </style>
 </head>
 <body>
@@ -596,9 +629,10 @@ body::before {
     <div class="hdr-row1">
       <div class="brand">
         <!-- A&S Logo Icon -->
-        <img src="icon-192.png" width="46" height="46" style="border-radius:13px;border:1px solid rgba(212,161,42,0.3);box-shadow:0 0 20px rgba(212,161,42,0.15);flex-shrink:0" alt="A&S"/>
+        <img src="icon-192.png" width="100" height="100" style="border-radius:13px;border:1px solid rgba(212,161,42,0.3);box-shadow:0 0 20px rgba(212,161,42,0.15);flex-shrink:0" alt="A&S"/>
         <div class="brand-info">
           <div class="brand-name">Gold Loan Tracker</div>
+          <div class="role-badge admin" id="role-badge">Admin</div>
         </div>
       </div>
       <div class="hdr-btns">
@@ -894,6 +928,72 @@ const firebaseConfig = {
   </div>
 </div>
 
+<!-- PIN LOGIN OVERLAY -->
+<div class="pin-ov" id="pin-ov">
+  <img src="icon-192.png" class="pin-logo" alt="AS"/>
+  <div class="pin-title">A&amp;S Gold Loans</div>
+  <div class="pin-sub">Select your role and enter PIN</div>
+  <div class="pin-role-row">
+    <div class="pin-role-btn sel" id="pr-admin" onclick="selectRole('admin')">&#128081; Admin</div>
+    <div class="pin-role-btn" id="pr-staff" onclick="selectRole('staff')">&#128100; Staff</div>
+  </div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-grid">
+    <button class="pin-key" onclick="pinKey('1')">1</button>
+    <button class="pin-key" onclick="pinKey('2')">2</button>
+    <button class="pin-key" onclick="pinKey('3')">3</button>
+    <button class="pin-key" onclick="pinKey('4')">4</button>
+    <button class="pin-key" onclick="pinKey('5')">5</button>
+    <button class="pin-key" onclick="pinKey('6')">6</button>
+    <button class="pin-key" onclick="pinKey('7')">7</button>
+    <button class="pin-key" onclick="pinKey('8')">8</button>
+    <button class="pin-key" onclick="pinKey('9')">9</button>
+    <button class="pin-key empty"></button>
+    <button class="pin-key" onclick="pinKey('0')">0</button>
+    <button class="pin-key del" onclick="pinDel()">&#9003;</button>
+  </div>
+  <div class="pin-err" id="pin-err"></div>
+</div>
+
+<!-- ROLE MANAGER SHEET -->
+<div class="sheet-ov" id="roles-ov" onclick="sheetOvClick(event,'roles-ov')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hd">
+      <div class="sheet-title">&#128081; Manage Roles</div>
+      <button class="sheet-close" onclick="closeRoles()">&#10005;</button>
+    </div>
+    <div class="sheet-body">
+      <div id="role-list"></div>
+      <div class="divider" style="margin:14px 0"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--tx1);text-transform:uppercase;letter-spacing:.9px;margin-bottom:12px">Change PIN</div>
+      <div class="fg">
+        <label class="fl">Role</label>
+        <select class="fi" id="rp-role">
+          <option value="admin">Admin</option>
+          <option value="staff">Staff</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">New PIN (4 digits)</label>
+        <input class="fi" id="rp-pin" type="password" inputmode="numeric" maxlength="4" placeholder="...."/>
+      </div>
+      <div class="fg">
+        <label class="fl">Confirm PIN</label>
+        <input class="fi" id="rp-pin2" type="password" inputmode="numeric" maxlength="4" placeholder="...."/>
+      </div>
+      <button class="btn-primary" onclick="saveRolePin()">Save PIN</button>
+      <div class="divider" style="margin:18px 0"></div>
+      <button class="btn-ghost" style="margin-top:0;color:var(--red);border-color:rgba(232,85,85,0.3)" onclick="doLogout()">&#128682; Logout</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -1020,6 +1120,7 @@ function startListener() {
       if (loans.length === 0) { seedData().forEach(l => fbWrite(l)); return; }
       render();
       syncBar('synced', '✓ Synced');
+      if(window._firstSnap!==false){window._firstSnap=false;syncRolesFromFirestore();bootAuth();}
     },
     () => syncBar('offline', '⚠️ Offline')
   );
@@ -1055,6 +1156,7 @@ function bootLocal() {
   try { loans = JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { loans = []; }
   if (!loans.length) { loans = seedData(); lsSave(); }
   render();
+  if(typeof bootAuth!=='undefined')bootAuth();
 }
 
 function seedData() {
@@ -1295,6 +1397,8 @@ window.sheetOvClick = function(e, id) {
   if (e.target === $(id)) {
     if (id === 'loan-ov')   closeLoanSheet();
     if (id === 'import-ov') closeUpload();
+    if (id === 'roles-ov')  closeRoles();
+    if (id === 'roles-ov')  closeRoles();
   }
 };
 
@@ -1514,6 +1618,138 @@ window.doImport = async function() {
   toast('✅ Imported ' + valid.length + ' loan' + (valid.length!==1?'s':'') + skipMsg);
   closeUpload(); switchNav('loans');
 };
+
+// ROLES_PLACEHOLDER_START
+const ROLES_KEY   = 'ak_roles_v1';
+const SESSION_KEY = 'ak_session_v1';
+
+function loadRoles() {
+  try { const v=localStorage.getItem(ROLES_KEY); return v?JSON.parse(v):{admin:'1234',staff:'0000'}; }
+  catch { return {admin:'1234',staff:'0000'}; }
+}
+function saveRoles(r)    { localStorage.setItem(ROLES_KEY,JSON.stringify(r)); }
+function loadSession()   { try { return localStorage.getItem(SESSION_KEY)||null; } catch { return null; } }
+function saveSession(r)  { localStorage.setItem(SESSION_KEY,r); }
+function clearSession()  { localStorage.removeItem(SESSION_KEY); }
+
+let currentRole=null, pinBuffer='', pinSelected='admin';
+
+window.selectRole=function(role){
+  pinSelected=role; pinBuffer=''; updatePinDots();
+  document.getElementById('pin-err').textContent='';
+  document.querySelectorAll('.pin-role-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('pr-'+role).classList.add('sel');
+};
+window.pinKey=function(k){
+  if(pinBuffer.length>=4)return;
+  pinBuffer+=k; updatePinDots();
+  if(pinBuffer.length===4)setTimeout(checkPin,120);
+};
+window.pinDel=function(){
+  pinBuffer=pinBuffer.slice(0,-1); updatePinDots();
+  document.getElementById('pin-err').textContent='';
+};
+function updatePinDots(){
+  for(let i=0;i<4;i++){
+    const d=document.getElementById('pd'+i);
+    d.classList.toggle('filled',i<pinBuffer.length);
+    d.classList.remove('shake');
+  }
+}
+function checkPin(){
+  const roles=loadRoles();
+  if(pinBuffer===roles[pinSelected]){
+    currentRole=pinSelected; saveSession(currentRole);
+    document.getElementById('pin-ov').classList.remove('open');
+    applyRole(currentRole); pinBuffer=''; updatePinDots();
+  } else {
+    pinBuffer='';
+    document.getElementById('pin-err').textContent='Wrong PIN - try again';
+    for(let i=0;i<4;i++){
+      const d=document.getElementById('pd'+i); d.classList.add('filled');
+      setTimeout(()=>{d.classList.remove('filled','shake');void d.offsetWidth;d.classList.add('shake');},50);
+    }
+    setTimeout(()=>updatePinDots(),600);
+  }
+}
+function applyRole(role){
+  const badge=document.getElementById('role-badge');
+  badge.textContent=role==='admin'?'Admin':'Staff';
+  badge.className='role-badge '+role;
+  const rb=document.getElementById('roles-btn');
+  if(rb)rb.style.display=role==='admin'?'flex':'none';
+  if(role==='staff'){
+    document.querySelectorAll('.c-del').forEach(el=>el.style.display='none');
+    const imp=document.getElementById('nv-import');if(imp)imp.style.display='none';
+  } else {
+    document.querySelectorAll('.c-del').forEach(el=>el.style.display='flex');
+    const imp=document.getElementById('nv-import');if(imp)imp.style.display='';
+  }
+  render();
+}
+const _orig0=window.openLoanSheet;
+window.openLoanSheet=function(loan){
+  _orig0(loan);
+  const sel=document.getElementById('f-status');
+  if(!sel)return;
+  Array.from(sel.options).forEach(o=>{o.disabled=(currentRole==='staff'&&o.value==='Closed');});
+};
+window.openRoles=function(){
+  if(currentRole!=='admin'){window.toast('Admin only');return;}
+  renderRoleList(); document.getElementById('roles-ov').classList.add('open');
+};
+window.closeRoles=function(){ document.getElementById('roles-ov').classList.remove('open'); };
+function renderRoleList(){
+  const roles=loadRoles();
+  const rows=[
+    {key:'admin',label:'Admin',color:'var(--g1)',desc:'Full access'},
+    {key:'staff',label:'Staff',color:'var(--blue)',desc:'Add loans only'},
+  ];
+  document.getElementById('role-list').innerHTML=rows.map(r=>`
+    <div class="role-row">
+      <div class="role-row-left">
+        <div class="role-row-name">${r.label}</div>
+        <div class="role-row-pin" style="color:${r.color}">PIN: ${'&bull;'.repeat(roles[r.key].length)}</div>
+      </div>
+      <div class="role-row-right"><span style="font-size:11px;color:var(--tx2)">${r.desc}</span></div>
+    </div>`).join('');
+}
+window.saveRolePin=function(){
+  const role=document.getElementById('rp-role').value;
+  const pin=document.getElementById('rp-pin').value.trim();
+  const pin2=document.getElementById('rp-pin2').value.trim();
+  if(!/^\d{4}$/.test(pin)){window.toast('PIN must be 4 digits');return;}
+  if(pin!==pin2){window.toast('PINs do not match');return;}
+  const roles=loadRoles(); roles[role]=pin; saveRoles(roles);
+  if(window.fbOn&&window.db){
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js')
+      .then(({doc,setDoc})=>setDoc(doc(window.db,'config','roles'),roles)).catch(()=>{});
+  }
+  window.toast((role==='admin'?'Admin':'Staff')+' PIN updated');
+  document.getElementById('rp-pin').value='';
+  document.getElementById('rp-pin2').value='';
+  renderRoleList();
+};
+window.doLogout=function(){
+  clearSession(); currentRole=null; pinBuffer='';
+  updatePinDots(); closeRoles(); selectRole('admin');
+  document.getElementById('pin-err').textContent='';
+  document.getElementById('pin-ov').classList.add('open');
+};
+async function syncRolesFromFirestore(){
+  if(!window.fbOn||!window.db)return;
+  try{
+    const{doc,getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap=await getDoc(doc(window.db,'config','roles'));
+    if(snap.exists())saveRoles(snap.data());
+  }catch{}
+}
+function bootAuth(){
+  const session=loadSession();
+  if(session==='admin'||session==='staff'){currentRole=session;applyRole(currentRole);}
+  else{document.getElementById('pin-ov').classList.add('open');}
+}
+// ROLES_PLACEHOLDER_END
 
 // ══════════════════════════════════════════
 // BOOT
