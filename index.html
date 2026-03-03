@@ -1364,37 +1364,56 @@ window.goPreviewStep = function() {
     const effRd3   = rd || (st==='Active' ? new Date().toISOString().split('T')[0] : null);
     const months   = (ld&&effRd3) ? calcMonths(ld,effRd3) : null;
     const interest = (months!==null&&!isNaN(amt)&&!isNaN(rt)) ? calcInterest(amt,rt,months) : null;
+    const isDup = loans.some(ex => ex.name.trim().toLowerCase() === nm.toLowerCase());
     return { id:uid(), name:nm, loanDate:ld, releaseDate:rd, amount:amt, rate:rt, status:st,
-             months, interest, ok: errs.length===0, errs };
+             months, interest, ok: errs.length===0, errs, dup: isDup };
   });
 
-  const good = parsedRows.filter(r=>r.ok).length;
-  const bad  = parsedRows.length - good;
-  const note = $('imp-note');
-  note.className = bad > 0 ? 'imp-note warn' : 'imp-note good';
-  note.innerHTML = bad > 0
-    ? `<strong>${good} valid</strong> rows ready · <strong>${bad} rows</strong> have errors and will be skipped`
-    : `<strong>✅ All ${good} rows</strong> look good and are ready to import!`;
+  const good  = parsedRows.filter(r=>r.ok && !r.dup).length;
+  const bad   = parsedRows.filter(r=>!r.ok).length;
+  const dups  = parsedRows.filter(r=>r.dup).length;
+  const note  = $('imp-note');
+  let noteClass = 'imp-note good', noteHtml = '';
+  if (good === 0 && dups > 0) {
+    noteClass = 'imp-note warn';
+    noteHtml = `<strong>All ${dups} rows already exist</strong> — nothing new to import.`;
+  } else if (bad > 0 || dups > 0) {
+    noteClass = 'imp-note warn';
+    const parts = [];
+    if (good > 0) parts.push(`<strong>${good} new</strong> ready to import`);
+    if (dups > 0) parts.push(`<strong>${dups} duplicate${dups!==1?'s':''}</strong> will be skipped`);
+    if (bad  > 0) parts.push(`<strong>${bad} error${bad!==1?'s':''}</strong> will be skipped`);
+    noteHtml = parts.join(' · ');
+  } else {
+    noteHtml = `<strong>✅ All ${good} rows</strong> are new and ready to import!`;
+  }
+  note.className = noteClass;
+  note.innerHTML = noteHtml;
 
-  const thead = `<tr><th>#</th><th>Loan No.</th><th>Loan Date</th><th>Release Date</th><th>Amount</th><th>Rate</th><th>Months</th><th>Total Due</th><th>Status</th></tr>`;
+  const thead = `<tr><th>#</th><th>Loan No.</th><th>Loan Date</th><th>Release Date</th><th>Amount</th><th>Rate</th><th>Months</th><th>Total Due</th><th>Status</th><th>Import?</th></tr>`;
   const tbody = parsedRows.slice(0,50).map((r,i) => {
     const total = (r.interest!==null&&!isNaN(r.amount)) ? r.amount+r.interest : null;
-    const ec = r.ok ? '' : 'err';
-    return `<tr>
+    const ec = r.dup ? 'err' : (r.ok ? '' : 'err');
+    const status_cell = r.dup
+      ? '<span style="color:var(--red);font-size:10px;font-weight:600">⊘ Duplicate</span>'
+      : (r.ok ? '<span style="color:var(--green);font-size:10px;font-weight:600">✓ New</span>'
+               : '<span style="color:var(--red);font-size:10px;font-weight:600">✗ Error</span>');
+    return `<tr style="${r.dup?'opacity:0.45':''}">
       <td class="${ec}">${i+1}</td>
       <td class="${ec}">${r.name}</td>
       <td class="${r.loanDate?'':'err'}">${r.loanDate||'❌'}</td>
-      <td class="${r.releaseDate?'':'err'}">${r.releaseDate||'❌'}</td>
+      <td class="${r.releaseDate?'':'err'}">${r.releaseDate||'—'}</td>
       <td class="${isNaN(r.amount)||r.amount<=0?'err':''}">${!isNaN(r.amount)&&r.amount>0?inr(r.amount):'❌'}</td>
       <td>${!isNaN(r.rate)&&r.rate>0?r.rate+'%':'❌'}</td>
       <td class="ok">${r.months!==null?r.months:'—'}</td>
       <td class="ok">${total!==null?inr(total):'—'}</td>
-      <td>${r.status}</td></tr>`;
+      <td>${r.status}</td>
+      <td>${status_cell}</td></tr>`;
   }).join('');
   $('tbl-wrap').innerHTML = `<table class="ptbl"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 
   const btn = $('imp-btn');
-  btn.textContent = `✦ Import ${good} Loan${good!==1?'s':''}`;
+  btn.textContent = good > 0 ? `✦ Import ${good} New Loan${good!==1?'s':''}` : '⊘ Nothing to Import';
   btn.disabled = good === 0;
   goStep(3);
 };
@@ -1411,15 +1430,17 @@ window.goStep = function(n) {
 };
 
 window.doImport = async function() {
-  const valid = parsedRows.filter(r=>r.ok).map(({ok,errs,months,interest,...l})=>l);
-  if (!valid.length) { toast('⚠️ No valid rows'); return; }
+  const valid = parsedRows.filter(r=>r.ok && !r.dup).map(({ok,errs,months,interest,dup,...l})=>l);
+  if (!valid.length) { toast('⊘ All rows already exist — nothing imported'); return; }
   if (fbOn) {
     syncBar('syncing', 'Importing ' + valid.length + ' loans…');
     await fbBatchWrite(valid);
   } else {
     loans = [...valid, ...loans]; lsSave(); render();
   }
-  toast('✅ Imported ' + valid.length + ' loan' + (valid.length!==1?'s':''));
+  const skipped = parsedRows.filter(r=>r.dup).length;
+  const skipMsg = skipped > 0 ? ` (${skipped} duplicate${skipped!==1?'s':''} skipped)` : '';
+  toast('✅ Imported ' + valid.length + ' loan' + (valid.length!==1?'s':'') + skipMsg);
   closeUpload(); switchNav('loans');
 };
 
