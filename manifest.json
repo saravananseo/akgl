@@ -1,7 +1,7 @@
 {
-  "name": "AK Gold Loan Tracker",
-  "short_name": "AK Gold Loans",
-  "description": "Gold loan tracker with Firebase sync — Arul Kumaran",
+  "name": "A&S Gold Loan",
+  "short_name": "A&S",
+  "description": "Gold loan tracker with Firebase sync — A&S",
   "start_url": "/akgl/index.html",
   "display": "standalone",
   "orientation": "portrait",
