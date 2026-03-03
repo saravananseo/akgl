@@ -10,6 +10,9 @@
 <meta name="apple-mobile-web-app-title" content="AK Gold Loans"/>
 <title>AK Gold Loan Tracker</title>
 <link rel="manifest" href="manifest.json"/>
+<link rel="icon" type="image/x-icon" href="favicon.ico"/>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -592,29 +595,10 @@ body::before {
   <div class="hdr">
     <div class="hdr-row1">
       <div class="brand">
-        <!-- AK Monogram Icon -->
-        <div class="ak-icon">
-          <svg width="30" height="30" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#FFF0A0"/>
-                <stop offset="50%" stop-color="#D4A12A"/>
-                <stop offset="100%" stop-color="#8B6010"/>
-              </linearGradient>
-              <linearGradient id="g2" x1="0" y1="0" x2="0.5" y2="1">
-                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.28"/>
-                <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-            <rect width="100" height="100" rx="24" fill="url(#g1)"/>
-            <rect width="100" height="100" rx="24" fill="url(#g2)"/>
-            <text x="12" y="70" font-family="Georgia,serif" font-size="55" font-weight="bold" fill="#1A0E00" opacity="0.88">A</text>
-            <text x="50" y="70" font-family="Georgia,serif" font-size="55" font-weight="bold" fill="#1A0E00" opacity="0.88">K</text>
-          </svg>
-        </div>
+        <!-- A&S Logo Icon -->
+        <img src="icon-192.png" width="46" height="46" style="border-radius:13px;border:1px solid rgba(212,161,42,0.3);box-shadow:0 0 20px rgba(212,161,42,0.15);flex-shrink:0" alt="A&S"/>
         <div class="brand-info">
           <div class="brand-name">Gold Loan Tracker</div>
-          <div class="brand-sub">Arul Kumaran</div>
         </div>
       </div>
       <div class="hdr-btns">
@@ -634,10 +618,10 @@ body::before {
 
     <!-- Metrics -->
     <div class="metrics">
-      <div class="met"><div class="met-v" id="mc">0</div><div class="met-l">Loans</div></div>
-      <div class="met"><div class="met-v" id="mp">₹0</div><div class="met-l">Principal</div></div>
-      <div class="met"><div class="met-v" id="mi">₹0</div><div class="met-l">Interest</div></div>
-      <div class="met"><div class="met-v" id="mt">₹0</div><div class="met-l">Total</div></div>
+      <div class="met"><div class="met-v" style="color:var(--green)" id="mc">0</div><div class="met-l">Active Loans</div></div>
+      <div class="met"><div class="met-v" style="color:var(--red)" id="mc-cl">0</div><div class="met-l">Closed Loans</div></div>
+      <div class="met"><div class="met-v" id="mp">₹0</div><div class="met-l">Active Principal</div></div>
+      <div class="met"><div class="met-v" id="mp-cl">₹0</div><div class="met-l">Closed Principal</div></div>
     </div>
   </div>
 
@@ -1189,11 +1173,11 @@ function renderStats() {
 
   const grand = actP + actI + clP + clI;
 
-  // ── Header metrics bar (totals across all) ──
-  $('mc').textContent = loans.length;
-  $('mp').textContent = inr(actP + clP);
-  $('mi').textContent = inr(actI + clI);
-  $('mt').textContent = inr(grand);
+  // ── Header metrics bar ──
+  $('mc').textContent    = actLoans.length;
+  $('mc-cl').textContent = clLoans.length;
+  $('mp').textContent    = inr(actP);
+  $('mp-cl').textContent = inr(clP);
 
   // ── Stats page ──
   $('s-grand').textContent   = inr(grand);
