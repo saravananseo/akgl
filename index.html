@@ -1247,7 +1247,7 @@ function renderLoans() {
         </div>
         <div class="card-btns">
           <button class="c-btn c-edit" onclick="editLoan('${l.id}')">✏️</button>
-          <button class="c-btn c-del"  onclick="askDelete('${l.id}')">🗑️</button>
+          ${currentRole === 'admin' ? `<button class="c-btn c-del" onclick="askDelete('${l.id}')">🗑️</button>` : ''}
         </div>
       </div>
     </div>`;
