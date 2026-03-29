@@ -1462,7 +1462,7 @@ function processFile(file) {
           cells.push(cur.trim()); return cells;
         });
       } else {
-        const wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
+        const wb = XLSX.read(e.target.result, { type:'array' });
         rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'' });
       }
       if (!rows || rows.length < 2) { toast('⚠️ File has no data rows'); return; }
@@ -1514,15 +1514,25 @@ function toLocalDate(d) {
 }
 function parseDateVal(val) {
   if (!val && val !== 0) return null;
+  // Serial number from SheetJS (no cellDates) — safest, no timezone issue
+  if (typeof val === 'number') {
+    try { const d=XLSX.SSF.parse_date_code(val); if(d&&d.y>1900) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`; } catch {}
+    return null;
+  }
+  // Date object (fallback) — use local getters to avoid UTC shift
   if (val instanceof Date) return isNaN(val) ? null : toLocalDate(val);
   const s = String(val).trim(); if (!s) return null;
+  // String that looks like a serial number
   if (/^\d{4,5}$/.test(s)) {
-    try { const d=XLSX.SSF.parse_date_code(parseInt(s)); if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`; } catch {}
+    try { const d=XLSX.SSF.parse_date_code(parseInt(s)); if(d&&d.y>1900) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`; } catch {}
   }
+  // DD-MM-YYYY or DD/MM/YYYY
   const m1 = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
   if (m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+  // YYYY-MM-DD
   const m2 = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
   if (m2) return `${m2[1]}-${m2[2].padStart(2,'0')}-${m2[3].padStart(2,'0')}`;
+  // Generic fallback with local time to avoid UTC shift
   const d = new Date(s + 'T00:00:00'); return isNaN(d) ? null : toLocalDate(d);
 }
 
