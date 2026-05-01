@@ -652,8 +652,8 @@ body::before {
 
     <!-- Metrics -->
     <div class="metrics">
-      <div class="met"><div class="met-v" style="color:var(--green)" id="mc">0</div><div class="met-l">Active Loans</div></div>
-      <div class="met"><div class="met-v" style="color:var(--red)" id="mc-cl">0</div><div class="met-l">Closed Loans</div></div>
+      <div class="met" id="met-active" onclick="toggleStatusFilter('Active')" style="cursor:pointer;transition:background 0.2s,border-bottom 0.2s"><div class="met-v" style="color:var(--green)" id="mc">0</div><div class="met-l">Active Loans</div></div>
+      <div class="met" id="met-closed" onclick="toggleStatusFilter('Closed')" style="cursor:pointer;transition:background 0.2s,border-bottom 0.2s"><div class="met-v" style="color:var(--red)" id="mc-cl">0</div><div class="met-l">Closed Loans</div></div>
       <div class="met"><div class="met-v" id="mp">₹0</div><div class="met-l">Active Principal</div></div>
       <div class="met"><div class="met-v" id="mp-cl">₹0</div><div class="met-l">Closed Principal</div></div>
     </div>
@@ -1011,12 +1011,13 @@ const LS_KEY  = 'ak_loans_v1';
 const FB_KEY  = 'ak_fb_cfg_v1';
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let loans    = [];
-let editId   = null;
-let deleteId = null;
-let db       = null;
-let unsub    = null;
-let fbOn     = false;
+let loans        = [];
+let editId       = null;
+let deleteId     = null;
+let db           = null;
+let unsub        = null;
+let fbOn         = false;
+let statusFilter = null; // null = all, 'Active', 'Closed'
 
 // ══════════════════════════════════════════
 // UTILITIES
@@ -1198,19 +1199,38 @@ window.toggleSearch = function() {
 };
 window.clearSearch = function() { $('si').value = ''; renderLoans(); };
 
+window.toggleStatusFilter = function(status) {
+  statusFilter = (statusFilter === status) ? null : status;
+  const metEls = { Active: $('met-active'), Closed: $('met-closed') };
+  Object.entries(metEls).forEach(([s, el]) => {
+    if (!el) return;
+    if (statusFilter === s) {
+      el.style.background = s === 'Active' ? 'rgba(39,201,122,0.12)' : 'rgba(232,85,85,0.12)';
+      el.style.borderBottom = s === 'Active' ? '2px solid var(--green)' : '2px solid var(--red)';
+    } else {
+      el.style.background = '';
+      el.style.borderBottom = '';
+    }
+  });
+  renderLoans();
+};
+
 // ══════════════════════════════════════════
 // RENDER
 // ══════════════════════════════════════════
 function renderLoans() {
   const q    = ($('si').value || '').toLowerCase();
-  const list = loans.filter(l => l.name.toLowerCase().includes(q));
+  const list = loans.filter(l =>
+    l.name.toLowerCase().includes(q) &&
+    (!statusFilter || l.status === statusFilter)
+  );
   const el   = $('loan-list');
 
   if (!list.length) {
     el.innerHTML = `<div class="empty">
       <div class="empty-ic">🪙</div>
       <div class="empty-t">${loans.length === 0 ? 'No Loans Yet' : 'No Results'}</div>
-      <div class="empty-s">${loans.length === 0 ? 'Tap + to record your first gold loan.' : 'Try a different loan number.'}</div>
+      <div class="empty-s">${loans.length === 0 ? 'Tap + to record your first gold loan.' : 'Try a different search or filter.'}</div>
     </div>`;
     return;
   }
@@ -1311,6 +1331,7 @@ function renderStats() {
 }
 
 function render() { renderLoans(); renderStats(); }
+window.renderLoans = renderLoans;
 
 // ══════════════════════════════════════════
 // ADD / EDIT LOAN
