@@ -1056,7 +1056,28 @@ function calcMonths(ld, rd) {
   return months;
 }
 function calcInterest(amt, rate, months) { return amt * (rate / 100) * months; }
+// Returns next 5 dates where the billed month count increases, with new total due
+function nextInterestSteps(loanDate, amount, rate, count = 5) {
+  const steps = [];
+  const a = new Date(loanDate + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const currentMonths = calcMonths(loanDate, today.toISOString().split('T')[0]);
+  let searchFrom = new Date(today);
 
+  while (steps.length < count) {
+    // advance one day at a time until months ticks up
+    searchFrom.setDate(searchFrom.getDate() + 1);
+    const d = searchFrom.toISOString().split('T')[0];
+    const m = calcMonths(loanDate, d);
+    if (m !== null && m > (steps.length === 0 ? currentMonths : steps[steps.length-1].months)) {
+      const interest = calcInterest(amount, rate, m);
+      steps.push({ date: d, months: m, interest, total: amount + interest });
+    }
+    // safety: stop searching beyond 3 years
+    if (searchFrom - today > 1000 * 60 * 60 * 24 * 365 * 3) break;
+  }
+  return steps;
+}
 // Indian number formatting
 function inr(n) {
   if (n === null || n === undefined || isNaN(n)) return '—';
