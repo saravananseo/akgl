@@ -1314,6 +1314,48 @@ function renderStats() {
 
   // Active totals — interest calculated till today
   let actP=0, actI=0, actSR=0;
+let nextDateMs = Infinity, nextDateStr = '—', nextAddedAmt = 0;
+actLoans.forEach(l => {
+  const rd = l.releaseDate || today;
+  const m  = calcMonths(l.loanDate, rd);
+  const i  = m !== null ? calcInterest(l.amount, l.rate, m) : 0;
+  actP  += l.amount;
+  actI  += i;
+  actSR += l.rate;
+
+  const a = new Date(l.loanDate);
+  const b = new Date(today);
+  let compM = (b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth());
+  if (b.getDate() < a.getDate()) compM--;
+  const lastComplete = new Date(a);
+  lastComplete.setMonth(lastComplete.getMonth() + compM);
+  const remDays = Math.round((b - lastComplete) / (1000*60*60*24));
+
+  let nextTrigger;
+  if (remDays >= 5) {
+    nextTrigger = new Date(a);
+    nextTrigger.setMonth(nextTrigger.getMonth() + compM + 2);
+  } else {
+    nextTrigger = new Date(lastComplete);
+    nextTrigger.setDate(nextTrigger.getDate() + 5);
+    if (nextTrigger <= b) {
+      nextTrigger = new Date(a);
+      nextTrigger.setMonth(nextTrigger.getMonth() + compM + 1);
+    }
+  }
+
+  const trigMs = nextTrigger.getTime();
+  const nextM  = calcMonths(l.loanDate, nextTrigger.toISOString().split('T')[0]);
+  const added  = nextM !== null ? calcInterest(l.amount, l.rate, nextM) - i : 0;
+
+  if (trigMs < nextDateMs) {
+    nextDateMs   = trigMs;
+    nextDateStr  = nextTrigger.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+    nextAddedAmt = added;
+  } else if (trigMs === nextDateMs) {
+    nextAddedAmt += added;
+  }
+});
   actLoans.forEach(l => {
     const rd = l.releaseDate || today;
     const m  = calcMonths(l.loanDate, rd);
@@ -1352,6 +1394,8 @@ function renderStats() {
   $('s-act-i').textContent     = inr(actI);
   $('s-act-total').textContent = inr(actP + actI);
   $('s-act-rate').textContent  = actLoans.length ? (actSR / actLoans.length).toFixed(1) + '%' : '0%';
+     $('s-next-date').textContent = actLoans.length ? nextDateStr : '—';
+  $('s-next-amt').textContent  = actLoans.length ? '+' + inr(nextAddedAmt) : '—';
 
   // Closed block
   $('s-cl-count').textContent  = clLoans.length;
