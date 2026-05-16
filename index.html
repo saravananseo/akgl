@@ -1441,7 +1441,18 @@ function renderStats() {
 }
 
 function render() { renderLoans(); renderStats(); }
-
+// Auto-refresh stats at midnight
+function scheduleMidnightRefresh() {
+  const now = new Date();
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 0); // next midnight
+  const msUntilMidnight = midnight - now;
+  setTimeout(() => {
+    renderStats();
+    scheduleMidnightRefresh(); // reschedule for next midnight
+  }, msUntilMidnight);
+}
+scheduleMidnightRefresh();
 // ══════════════════════════════════════════
 // ADD / EDIT LOAN
 // ══════════════════════════════════════════
