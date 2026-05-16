@@ -1441,18 +1441,21 @@ function renderStats() {
 }
 
 function render() { renderLoans(); renderStats(); }
-// Auto-refresh stats at midnight
+// Auto-refresh stats at midnight + every minute safety net
 function scheduleMidnightRefresh() {
   const now = new Date();
   const midnight = new Date();
-  midnight.setHours(24, 0, 0, 0); // next midnight
+  midnight.setHours(24, 0, 0, 0);
   const msUntilMidnight = midnight - now;
   setTimeout(() => {
     renderStats();
-    scheduleMidnightRefresh(); // reschedule for next midnight
+    scheduleMidnightRefresh();
   }, msUntilMidnight);
 }
 scheduleMidnightRefresh();
+
+// Safety net — re-render stats every 60 seconds in case tab was left open
+setInterval(() => renderStats(), 60 * 1000);
 // ══════════════════════════════════════════
 // ADD / EDIT LOAN
 // ══════════════════════════════════════════
