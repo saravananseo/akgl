@@ -661,7 +661,7 @@ body::before {
     <div class="search-wrap" id="sw">
       <div class="search-inner">
         <span style="color:var(--tx2);font-size:15px">🔍</span>
-        <input type="text" id="si" placeholder="Search loan number…" oninput="renderLoans()"/>
+        <input type="text" id="si" placeholder="Search loan number…" oninput="onSearchInput()"/>
         <span class="search-x" onclick="clearSearch()">✕</span>
       </div>
     </div>
@@ -1248,7 +1248,17 @@ window.toggleSearch = function() {
   if (w.classList.contains('open')) $('si').focus();
   else clearSearch();
 };
-window.clearSearch = function() { $('si').value = ''; renderLoans(); };
+window.clearSearch = function() { $('si').value = ''; statusFilter = null; ['met-active','met-closed','met-active-p','met-closed-p'].forEach(id => { const el=$(id); if(el) el.style.background=''; }); renderLoans(); };
+
+window.onSearchInput = function() {
+  if (statusFilter) {
+    statusFilter = null;
+    ['met-active','met-closed','met-active-p','met-closed-p'].forEach(id => {
+      const el = $(id); if (el) el.style.background = '';
+    });
+  }
+  renderLoans();
+};
 
 window.setStatusFilter = function(status) {
   if (statusFilter === status) {
@@ -1442,22 +1452,6 @@ function renderStats() {
 
 function render() { renderLoans(); renderStats(); }
 
-   // Auto-refresh stats at midnight + every minute safety net
-function scheduleMidnightRefresh() {
-  const now = new Date();
-  const midnight = new Date();
-  midnight.setHours(24, 0, 0, 0);
-  const msUntilMidnight = midnight - now;
-  setTimeout(() => {
-    renderStats();
-    scheduleMidnightRefresh();
-  }, msUntilMidnight);
-}
-scheduleMidnightRefresh();
-
-// Safety net — re-render stats every 60 seconds in case tab was left open
-// setInterval(() => renderStats(), 30 * 60 * 1000);
-   
 // ══════════════════════════════════════════
 // ADD / EDIT LOAN
 // ══════════════════════════════════════════
