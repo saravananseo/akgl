@@ -1843,9 +1843,12 @@ function applyRole(role){
   if(rb)rb.style.display=role==='admin'?'flex':'none';
   const lb=document.getElementById('logout-btn');
   if(lb)lb.style.display=role==='admin'?'flex':'none';
+  const sb=document.getElementById('nv-stats');
+  if(sb)sb.style.display=role==='admin'?'flex':'none';
   if(role==='staff'){
     document.querySelectorAll('.c-del').forEach(el=>el.style.display='none');
     const imp=document.getElementById('nv-import');if(imp)imp.style.display='none';
+    if(document.getElementById('pg-stats')?.classList.contains('act'))switchNav('loans');
   } else {
     document.querySelectorAll('.c-del').forEach(el=>el.style.display='flex');
     const imp=document.getElementById('nv-import');if(imp)imp.style.display='';
