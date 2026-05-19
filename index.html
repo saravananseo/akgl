@@ -448,167 +448,6 @@ body::before {
 .pv-l { font-size: 9px; color: var(--tx2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
 
 .note-box {
-  background: rgba(212,161,42,0.05); border-left: 2px soli}
-.total-lbl { font-size: 10px; color: var(--tx2); text-transform: uppercase; letter-spacing: 0.8px; }
-.total-val { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 700; color: var(--tx0); line-height: 1.1; }
-.card-btns { display: flex; gap: 8px; }
-.c-btn {
-  width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; font-size: 15px;
-  transition: transform 0.15s;
-}
-.c-btn:active { transform: scale(0.86); }
-.c-edit { background: rgba(212,161,42,0.1); color: var(--g2); }
-.c-del  { background: rgba(232,85,85,0.1); color: var(--red); }
-
-/* ── NEXT INTEREST STEPS ── */
-.next-interest-row {
-  display: flex; align-items: center; justify-content: space-between;
-  border-top: 1px solid rgba(212,161,42,0.18);
-  padding: 10px 16px 12px;
-  background: linear-gradient(135deg, rgba(212,161,42,0.07), rgba(212,161,42,0.03));
-  border-radius: 0 0 var(--r) var(--r);
-  gap: 8px;
-}
-.ni-left, .ni-right { display: flex; flex-direction: column; }
-.ni-right { text-align: right; }
-.ni-lbl { font-size: 9px; color: var(--tx2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
-.ni-date { font-size: 13px; font-weight: 600; color: var(--g1); }
-.ni-amt  { font-size: 16px; font-weight: 700; color: var(--green); }
-.ni-icon { font-size: 20px; opacity: 0.7; }
-
-/* ════════════════════════════════════════════
-   EMPTY STATE
-   ════════════════════════════════════════════ */
-.empty { padding: 60px 20px; text-align: center; }
-.empty-ic { font-size: 64px; margin-bottom: 18px; filter: drop-shadow(0 0 24px rgba(212,161,42,0.25)); }
-.empty-t { font-family: 'Cormorant Garamond', serif; font-size: 26px; color: var(--tx0); margin-bottom: 8px; }
-.empty-s { font-size: 13px; color: var(--tx2); line-height: 1.7; }
-
-/* ════════════════════════════════════════════
-   STATS PAGE
-   ════════════════════════════════════════════ */
-.stat-hero {
-  background: linear-gradient(145deg, rgba(22,17,6,0.92), rgba(12,9,2,0.96));
-  border: 1px solid var(--bd); border-radius: var(--r);
-  padding: 26px; margin-bottom: 14px;
-  text-align: center; position: relative; overflow: hidden;
-  box-shadow: var(--shadow);
-}
-.stat-hero::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--g1), transparent);
-}
-.stat-hero-l { font-size: 10px; color: var(--tx2); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 8px; }
-.stat-hero-v { font-family: 'Cormorant Garamond', serif; font-size: 44px; font-weight: 700; color: var(--tx0); line-height: 1; }
-.stat-hero-s { font-size: 12px; color: var(--tx1); margin-top: 6px; }
-
-.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-.stat-box {
-  background: linear-gradient(145deg, rgba(22,17,6,0.92), rgba(12,9,2,0.96));
-  border: 1px solid var(--bd); border-radius: var(--r);
-  padding: 16px 14px; box-shadow: var(--shadow);
-  display: flex; flex-direction: column; gap: 6px;
-}
-.stat-box-l { font-size: 10px; color: var(--tx2); text-transform: uppercase; letter-spacing: 0.8px; line-height: 1.3; }
-.stat-box-v { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 700; color: var(--g1); line-height: 1; }
-.stat-box.green .stat-box-v { color: var(--green); }
-.stat-box.red   .stat-box-v { color: var(--red); }
-
-.stat-section-lbl {
-  display: flex; align-items: center; gap: 8px;
-  font-family: 'Cormorant Garamond', serif; font-size: 16px;
-  color: var(--tx1); margin: 0 0 10px; letter-spacing: 0.3px;
-}
-.sl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.sl-dot.green { background: var(--green); box-shadow: 0 0 6px rgba(39,201,122,0.5); }
-.sl-dot.red   { background: var(--red);   box-shadow: 0 0 6px rgba(232,85,85,0.5); }
-.sl-count {
-  margin-left: auto; font-family: 'DM Sans', sans-serif;
-  font-size: 12px; font-weight: 600;
-  background: var(--glass); border: 1px solid var(--bd);
-  border-radius: 20px; padding: 2px 10px; color: var(--tx1);
-}
-.stat-box-v.green { color: var(--green); }
-.stat-box-v.gold  { color: var(--g1); }
-.sec-lbl { font-family: 'Cormorant Garamond', serif; font-size: 17px; color: var(--tx1); margin: 20px 0 10px; letter-spacing: 0.4px; }
-.divider { height: 1px; background: linear-gradient(90deg, transparent, var(--bd), transparent); margin: 18px 0; }
-
-.rule-box {
-  background: rgba(212,161,42,0.05); border-left: 2px solid var(--g3);
-  border-radius: 0 var(--rs) var(--rs) 0; padding: 12px 14px;
-  font-size: 12px; color: var(--tx1); line-height: 1.8; margin-bottom: 10px;
-}
-.rule-box strong { color: var(--g1); }
-
-/* ════════════════════════════════════════════
-   BOTTOM SHEETS (shared)
-   ════════════════════════════════════════════ */
-.sheet-ov {
-  display: none; position: fixed; inset: 0; z-index: 300;
-  background: rgba(0,0,0,0.72); backdrop-filter: blur(6px);
-  align-items: flex-end; justify-content: center;
-}
-.sheet-ov.open { display: flex; }
-.sheet {
-  background: linear-gradient(180deg, var(--bg3) 0%, var(--bg2) 100%);
-  border: 1px solid var(--bd); border-bottom: none;
-  border-radius: var(--rx) var(--rx) 0 0;
-  width: 100%; max-width: 520px; max-height: 94vh; overflow-y: auto;
-  animation: sheetUp 0.38s cubic-bezier(0.22,1,0.36,1);
-}
-@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.sheet-handle { width: 40px; height: 4px; background: var(--tx3); border-radius: 2px; margin: 14px auto 0; }
-.sheet-hd {
-  padding: 16px 20px 14px;
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--bd);
-}
-.sheet-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--g1); }
-.sheet-close {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: var(--glass); border: 1px solid var(--bd);
-  color: var(--tx1); font-size: 15px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-}
-.sheet-body { padding: 20px; }
-
-/* ════════════════════════════════════════════
-   FORM ELEMENTS
-   ════════════════════════════════════════════ */
-.fg { margin-bottom: 16px; }
-.fl {
-  display: block; font-size: 10px; font-weight: 600;
-  color: var(--tx1); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 7px;
-}
-.fi {
-  width: 100%; padding: 13px 15px;
-  background: rgba(255,255,255,0.03); border: 1.5px solid var(--bd);
-  border-radius: var(--rs); font-size: 15px; font-family: 'DM Sans', sans-serif;
-  color: var(--tx0); outline: none; -webkit-appearance: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.fi:focus { border-color: var(--g2); box-shadow: 0 0 0 3px rgba(212,161,42,0.08); }
-.fi::placeholder { color: var(--tx2); }
-.fi option { background: var(--bg2); color: var(--tx0); }
-.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-/* live preview panel */
-.preview-box {
-  background: linear-gradient(145deg, rgba(22,17,6,0.95), rgba(10,8,2,0.98));
-  border: 1px solid var(--bdH); border-radius: var(--rs);
-  padding: 16px; margin-bottom: 16px; position: relative; overflow: hidden;
-}
-.preview-box::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--g1), transparent);
-}
-.preview-lbl { font-size: 10px; color: var(--tx2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-.preview-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center; gap: 4px; }
-.pv-v { font-family: 'Cormorant Garamond', serif; font-size: 21px; font-weight: 700; color: var(--g1); }
-.pv-l { font-size: 9px; color: var(--tx2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
-
-.note-box {
   background: rgba(212,161,42,0.05); border-left: 2px solid var(--g3);
   border-radius: 0 var(--rs) var(--rs) 0; padding: 10px 13px;
   font-size: 12px; color: var(--tx1); line-height: 1.65; margin-bottom: 16px;
@@ -829,7 +668,7 @@ body::before {
         <!-- A&S Logo Icon -->
         <img src="icon-192.png" width="100" height="100" style="border-radius:13px;border:1px solid rgba(212,161,42,0.3);box-shadow:0 0 20px rgba(212,161,42,0.15);flex-shrink:0" alt="A&S"/>
         <div class="brand-info">
-          <div class="brand-name">Gold Loan</div>
+          <div class="brand-name">Gold Loan Tracker</div>
           <div class="role-badge admin" id="role-badge">Admin</div>
         </div>
       </div>
@@ -1494,26 +1333,6 @@ function renderLoans() {
     const total    = interest !== null ? l.amount + interest : null;
     const isActive = l.status === 'Active';
 
-    // Build next 5 interest step rows for active loans
-    let nextStepsHtml = '';
-    if (isActive) {
-      const steps = nextInterestSteps(l.loanDate, l.amount, l.rate, 1);
-      if (steps.length) {
-        const nx = steps[0];
-        nextStepsHtml = `
-          <div class="next-interest-row">
-            <div class="ni-left">
-              <div class="ni-lbl">📅 Next interest on</div>
-              <div class="ni-date">${fmtDate(nx.date)}</div>
-            </div>
-            <div class="ni-icon">⏰</div>
-            <div class="ni-right">
-              <div class="ni-lbl">Amount added</div>
-              <div class="ni-amt">+${inr(nx.total - (interest ?? l.amount))}</div>
-            </div>
-          </div>`;
-      }
-    }
     return `
     <div class="lcard" style="animation-delay:${i * 0.04}s">
       <div class="card-stripe ${isActive ? 'active' : 'closed'}"></div>
@@ -1530,7 +1349,6 @@ function renderLoans() {
       </div>
       <div class="card-body">
         <div><div class="cf-l">Principal</div><div class="cf-v gold">${inr(l.amount)}</div></div>
-        <div><div class="cf-l">Rate/Month</div><div class="cf-v">${l.rate}%</div></div>
         <div><div class="cf-l">Months</div><div class="cf-v big">${m !== null ? m : '—'}</div></div>
         <div><div class="cf-l">Interest</div><div class="cf-v green-v">${inr(interest)}</div></div>
       </div>
@@ -1544,7 +1362,6 @@ function renderLoans() {
           ${currentRole !== 'staff' ? `<button class="c-btn c-del" onclick="askDelete('${l.id}')">🗑️</button>` : ''}
         </div>
       </div>
-      ${nextStepsHtml}
     </div>`;
   }).join('');
 }
