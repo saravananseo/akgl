@@ -1190,22 +1190,6 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
     <div id="loan-list"></div>
   </div>
 
-  <!-- ══ CUSTOMERS PAGE ══ -->
-  <div class="pg" id="pg-customers">
-    <div class="search-inline" id="cust-search-wrap">
-      <span style="color:var(--tx2);font-size:15px;flex-shrink:0">🔍</span>
-      <input type="text" id="csi" placeholder="Search customer name or code…" oninput="renderCustomers()"/>
-      <span class="search-x" onclick="$('csi').value='';renderCustomers()" style="cursor:pointer">✕</span>
-    </div>
-    <div style="display:flex;gap:8px;padding:0 16px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch">
-      <button class="cust-filter-btn act" id="cf-all"      onclick="setCustFilter('all')">All</button>
-      <button class="cust-filter-btn"     id="cf-active"   onclick="setCustFilter('active')">Active</button>
-      <button class="cust-filter-btn"     id="cf-overdue"  onclick="setCustFilter('overdue')">Overdue</button>
-      <button class="cust-filter-btn"     id="cf-defaulter" onclick="setCustFilter('defaulter')">Defaulter</button>
-      <button class="cust-filter-btn"     id="cf-closed"   onclick="setCustFilter('closed')">Closed</button>
-    </div>
-    <div id="cust-list"></div>
-  </div>
   <div class="pg" id="pg-stats">
     <!-- Grand total hero -->
     <div class="stat-hero">
@@ -1310,12 +1294,15 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
 
   <!-- ══ CUSTOMERS PAGE ══ -->
   <div class="pg" id="pg-customers">
-    <div class="search-inline" style="margin-bottom:4px">
-      <span style="color:var(--tx2);font-size:15px;flex-shrink:0">🔍</span>
-      <input type="text" id="cust-si" placeholder="Search name, code, mobile…" oninput="renderCustomers()"/>
-      <span class="search-x" onclick="$('cust-si').value='';renderCustomers()">✕</span>
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 16px 4px">
+      <div class="search-inline" style="flex:1;margin:0">
+        <span style="color:var(--tx2);font-size:15px;flex-shrink:0">🔍</span>
+        <input type="text" id="cust-si" placeholder="Search name, code, mobile…" oninput="renderCustomers()"/>
+        <span class="search-x" onclick="$('cust-si').value='';renderCustomers()">✕</span>
+      </div>
+      <button onclick="exportAllCustomers()" style="padding:9px 12px;background:rgba(212,161,42,0.1);border:1px solid var(--bd);border-radius:var(--rs);color:var(--g1);font-size:12px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0">📤 Export</button>
     </div>
-    <div style="display:flex;gap:6px;overflow-x:auto;padding:4px 16px 10px;scrollbar-width:none">
+    <div style="display:flex;gap:6px;overflow-x:auto;padding:8px 16px 10px;scrollbar-width:none">
       <button class="cust-chip act" id="cf-All"        onclick="setCustFilter('All')">All</button>
       <button class="cust-chip"     id="cf-Active"     onclick="setCustFilter('Active')">🟢 Active</button>
       <button class="cust-chip"     id="cf-Closed"     onclick="setCustFilter('Closed')">⚫ Closed</button>
@@ -1323,10 +1310,8 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
       <button class="cust-chip"     id="cf-Defaulter"  onclick="setCustFilter('Defaulter')">🔴 Defaulter</button>
       <button class="cust-chip"     id="cf-Blacklisted" onclick="setCustFilter('Blacklisted')">⛔ Blacklisted</button>
     </div>
-    <div id="cust-list"></div>
+    <div id="cust-list" style="padding-bottom:80px"></div>
   </div>
-
-</div><!-- end #app -->
 
 <!-- ══ BOTTOM NAV ══ -->
 <div class="bnav">
@@ -1489,102 +1474,6 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     CUSTOMER SHEET
-     ══════════════════════════════════════════ -->
-<div class="sheet-ov" id="cust-ov" onclick="sheetOvClick(event,'cust-ov')">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-hd">
-      <div class="sheet-title" id="cust-sheet-title">New Customer</div>
-      <button class="sheet-close" onclick="closeCustSheet()">✕</button>
-    </div>
-    <div class="sheet-body">
-      <!-- Photo + ID row -->
-      <div class="frow" style="margin-bottom:16px">
-        <div>
-          <label class="fl">📷 Photo</label>
-          <div id="cust-photo-area"></div>
-        </div>
-        <div>
-          <label class="fl">🪪 ID Proof</label>
-          <div id="cust-id-area"></div>
-        </div>
-      </div>
-      <div class="frow">
-        <div class="fg">
-          <label class="fl">Customer Code</label>
-          <input class="fi" id="cf-code" type="text" placeholder="e.g. C001"/>
-        </div>
-        <div class="fg">
-          <label class="fl">Status</label>
-          <select class="fi" id="cf-status">
-            <option value="Active">Active</option>
-            <option value="Overdue">Overdue</option>
-            <option value="Defaulter">Defaulter</option>
-            <option value="Closed">Closed</option>
-          </select>
-        </div>
-      </div>
-      <div class="fg">
-        <label class="fl">Full Name</label>
-        <input class="fi" id="cf-name" type="text" placeholder="Customer full name"/>
-      </div>
-      <div class="fg">
-        <label class="fl">Mobile Number</label>
-        <input class="fi" id="cf-mobile" type="tel" placeholder="+91 99999 99999"/>
-      </div>
-      <div class="fg">
-        <label class="fl">Alternate Mobile</label>
-        <input class="fi" id="cf-mobile2" type="tel" placeholder="Optional"/>
-      </div>
-      <div class="fg">
-        <label class="fl">Address</label>
-        <textarea class="fi" id="cf-address" rows="2" placeholder="House no, Street, Area, City, Pincode" style="resize:none"></textarea>
-      </div>
-      <div class="frow">
-        <div class="fg">
-          <label class="fl">ID Type</label>
-          <select class="fi" id="cf-idtype">
-            <option value="Aadhaar">Aadhaar</option>
-            <option value="PAN">PAN</option>
-            <option value="Voter ID">Voter ID</option>
-            <option value="Passport">Passport</option>
-            <option value="Driving Licence">Driving Licence</option>
-            <option value="Ration Card">Ration Card</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label class="fl">ID Number</label>
-          <input class="fi" id="cf-idnum" type="text" placeholder="ID number"/>
-        </div>
-      </div>
-      <div class="frow">
-        <div class="fg">
-          <label class="fl">Date of Birth</label>
-          <input class="fi" id="cf-dob" type="date"/>
-        </div>
-        <div class="fg">
-          <label class="fl">Occupation</label>
-          <input class="fi" id="cf-occ" type="text" placeholder="e.g. Farmer, Business"/>
-        </div>
-      </div>
-      <div class="fg">
-        <label class="fl">Guarantor Name</label>
-        <input class="fi" id="cf-guarantor" type="text" placeholder="Optional"/>
-      </div>
-      <div class="fg">
-        <label class="fl">Guarantor Mobile</label>
-        <input class="fi" id="cf-gmobile" type="tel" placeholder="Optional"/>
-      </div>
-      <div class="fg">
-        <label class="fl">Remarks</label>
-        <textarea class="fi" id="cf-remarks" rows="2" placeholder="Any notes about this customer" style="resize:none"></textarea>
-      </div>
-      <button class="btn-primary" onclick="saveCustomer()">💾 Save Customer</button>
-    </div>
-  </div>
-</div>
 
 <!-- ══════════════════════════════════════════
      CUSTOMER DETAIL SHEET
@@ -1884,7 +1773,9 @@ const firebaseConfig = {
     'onStatusChange','sheetOvClick','openCfg','saveFirebaseCfg','useLocal',
     'resetFbCfg','selectRole','pinKey','pinDel','saveRolePin','goStep',
     'goMapStep','goPreviewStep','doImport','fileChosen','dzOver','dzDrop',
-    'toggleItemsCard','onSearchInput','toast'];
+    'toggleItemsCard','onSearchInput','toast','openCustSheet','closeCustSheet',
+    'saveCustomer','deleteCustomer','setCustFilter','exportCustomer','exportAllCustomers',
+    'openCustDetail','custPhotoChosen','custIdFileChosen','openIdImgViewer','openImgViewer'];
   window._pendingCalls = [];
   fns.forEach(name => {
     window[name] = function(...args) {
@@ -2112,9 +2003,14 @@ window.switchNav = function(tab) {
   document.querySelectorAll('.nv').forEach(n => n.classList.remove('act'));
   $('pg-' + tab)?.classList.add('act');
   $('nv-' + tab)?.classList.add('act');
-  $('fab').style.display = tab === 'loans' ? 'flex' : 'none';
-  // Refresh live gold rate whenever Summary tab is opened
+  // FAB: show for loans (add loan) and customers (add customer)
+  const fab = $('fab');
+  if (fab) {
+    fab.style.display = (tab === 'loans' || tab === 'customers') ? 'flex' : 'none';
+    fab.onclick = tab === 'customers' ? () => openCustSheet() : () => openLoanSheet();
+  }
   if (tab === 'stats') fetchLiveGoldRate(true);
+  if (tab === 'customers') renderCustomers();
 };
 
 window.toggleSearch = function() {}; // no-op — search is now always visible inline
@@ -3087,10 +2983,11 @@ window.doDelete  = async function() {
 // ══════════════════════════════════════════
 window.sheetOvClick = function(e, id) {
   if (e.target === $(id)) {
-    if (id === 'loan-ov')   closeLoanSheet();
-    if (id === 'import-ov') closeUpload();
-    if (id === 'roles-ov')  closeRoles();
-    if (id === 'roles-ov')  closeRoles();
+    if (id === 'loan-ov')        closeLoanSheet();
+    if (id === 'import-ov')      closeUpload();
+    if (id === 'roles-ov')       closeRoles();
+    if (id === 'cust-ov')        closeCustSheet();
+    if (id === 'cust-detail-ov') $('cust-detail-ov').classList.remove('open');
   }
 };
 
@@ -3374,6 +3271,8 @@ function applyRole(role){
   if(lb)lb.style.display=role==='admin'?'flex':'none';
   const sb=document.getElementById('nv-stats');
   if(sb)sb.style.display=role==='admin'?'flex':'none';
+  const custb=document.getElementById('nv-customers');
+  if(custb)custb.style.display=role==='admin'?'flex':'none';
   if(role==='staff'){
     document.querySelectorAll('.c-del').forEach(el=>el.style.display='none');
     const imp=document.getElementById('nv-import');if(imp)imp.style.display='none';
@@ -3442,6 +3341,431 @@ function bootAuth(){
 // ROLES_PLACEHOLDER_END
 
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// CUSTOMER MODULE
+// ══════════════════════════════════════════
+const LS_CUST = 'ak_customers_v1';
+let customers = [];
+let custEditId = null;
+let custFilter = 'All';
+let custPhoto = null;   // { data, type, name }
+let custIdImg = null;   // { data, type, name }
+
+function loadCustomers() {
+  try { customers = JSON.parse(localStorage.getItem(LS_CUST)) || []; } catch { customers = []; }
+}
+function saveCustomersLocal() { localStorage.setItem(LS_CUST, JSON.stringify(customers)); }
+
+// Write to Firestore if Firebase on
+async function fbWriteCustomer(c) {
+  if (!db) return;
+  const { id, ...data } = c;
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(db, 'customers', id), data);
+  } catch {}
+}
+async function fbDeleteCustomer(id) {
+  if (!db) return;
+  try {
+    const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await deleteDoc(doc(db, 'customers', id));
+  } catch {}
+}
+
+// Get loan summary for a customer (link by customer code in loan name or custCode field)
+function getCustLoans(c) {
+  return loans.filter(l => l.custId === c.id || l.custCode === c.code);
+}
+
+function custLoanStats(c) {
+  const cl = getCustLoans(c);
+  const today = localDate();
+  let totalPrincipal = 0, interestTillDate = 0, interestEarnedClosed = 0;
+  const byStatus = { Active: 0, Closed: 0, Overdue: 0 };
+  cl.forEach(l => {
+    totalPrincipal += l.amount || 0;
+    const rd = l.releaseDate || (l.status === 'Active' ? today : null);
+    const m  = rd ? calcMonths(l.loanDate, rd) : 0;
+    const i  = m ? calcInterest(l.amount, l.rate, m) : 0;
+    if (l.status === 'Active') {
+      interestTillDate += i;
+      // Check if overdue >1 year
+      const days = Math.floor((new Date(today+'T00:00:00') - new Date(l.loanDate+'T00:00:00')) / (1000*60*60*24));
+      if (days >= 365) byStatus.Overdue++;
+      else byStatus.Active++;
+    } else {
+      interestEarnedClosed += i;
+      byStatus.Closed++;
+    }
+  });
+  return { loans: cl, totalPrincipal, interestTillDate, interestEarnedClosed, byStatus };
+}
+
+// Status color helper
+function custStatusColor(s) {
+  return { Active:'var(--green)', Closed:'var(--tx2)', Overdue:'#F5A623', Defaulter:'var(--red)', Blacklisted:'var(--red)' }[s] || 'var(--tx2)';
+}
+function custStatusBg(s) {
+  return { Active:'rgba(39,201,122,0.1)', Closed:'rgba(120,120,120,0.1)', Overdue:'rgba(245,166,35,0.1)', Defaulter:'rgba(232,85,85,0.12)', Blacklisted:'rgba(232,85,85,0.12)' }[s] || 'rgba(120,120,120,0.1)';
+}
+function custStatusEmoji(s) {
+  return { Active:'🟢', Closed:'⚫', Overdue:'🟡', Defaulter:'🔴', Blacklisted:'⛔' }[s] || '';
+}
+
+// ── Render customer list ──
+function renderCustomers() {
+  const q   = ($('cust-si')?.value || '').toLowerCase();
+  const el  = $('cust-list');
+  if (!el) return;
+
+  let list = customers.filter(c => {
+    const match = (c.name||'').toLowerCase().includes(q) ||
+                  (c.code||'').toLowerCase().includes(q) ||
+                  (c.mobile||'').includes(q);
+    const filterOk = custFilter === 'All' || c.status === custFilter;
+    return match && filterOk;
+  });
+
+  // Update chip active state
+  ['All','Active','Closed','Overdue','Defaulter','Blacklisted'].forEach(s => {
+    const el = $('cf-' + s); if (el) el.classList.toggle('act', custFilter === s);
+  });
+
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-ic">👥</div><div class="empty-t">No Customers</div><div class="empty-s">${customers.length ? 'No results for this filter.' : 'Tap + to add your first customer.'}</div></div>`;
+    return;
+  }
+
+  el.innerHTML = list.map((c, i) => {
+    const stats = custLoanStats(c);
+    const avatarHtml = c.photo
+      ? `<img src="${c.photo.data}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`
+      : `<span style="font-size:22px">${c.gender === 'Female' ? '👩' : '👤'}</span>`;
+
+    const loanSummary = stats.loans.length
+      ? `<span style="color:var(--green)">${stats.byStatus.Active} Active</span>${stats.byStatus.Overdue ? ` · <span style="color:#F5A623">${stats.byStatus.Overdue} Overdue</span>` : ''}${stats.byStatus.Closed ? ` · <span style="color:var(--tx2)">${stats.byStatus.Closed} Closed</span>` : ''}`
+      : '<span style="color:var(--tx2)">No loans yet</span>';
+
+    return `<div class="cust-card" onclick="openCustDetail('${c.id}')" style="animation-delay:${i*0.03}s">
+      <div class="cust-card-head">
+        <div class="cust-avatar">${avatarHtml}</div>
+        <div class="cust-info">
+          <div class="cust-name">${c.name||'—'}</div>
+          <div class="cust-code">${c.code||''} ${c.mobile ? '· '+c.mobile : ''}</div>
+          <div class="cust-mobile" style="margin-top:3px;font-size:11px">${loanSummary}</div>
+        </div>
+        <span class="cust-status-badge" style="background:${custStatusBg(c.status)};color:${custStatusColor(c.status)};border:1px solid ${custStatusColor(c.status)}40">
+          ${custStatusEmoji(c.status)} ${c.status||'Active'}
+        </span>
+      </div>
+      ${stats.loans.length ? `<div class="cust-card-body">
+        <div><div class="cust-cf-l">Principal</div><div class="cust-cf-v">${inr(stats.totalPrincipal)}</div></div>
+        <div><div class="cust-cf-l">Interest Accr.</div><div class="cust-cf-v" style="color:var(--green)">${inr(stats.interestTillDate)}</div></div>
+        <div><div class="cust-cf-l">Interest Earned</div><div class="cust-cf-v" style="color:var(--g1)">${inr(stats.interestEarnedClosed)}</div></div>
+      </div>` : ''}
+      <div class="cust-card-foot">
+        ${currentRole !== 'staff' ? `<button class="c-btn c-edit" onclick="event.stopPropagation();openCustSheet('${c.id}')">✏️</button>` : ''}
+        <button class="c-btn" onclick="event.stopPropagation();exportCustomer('${c.id}')" style="background:rgba(212,161,42,0.1);color:var(--g2)">📤</button>
+        ${c.mobile ? `
+        <a class="c-btn" href="https://wa.me/91${c.mobile.replace(/\D/g,'')}" target="_blank" onclick="event.stopPropagation()" style="background:rgba(37,211,102,0.12);color:#25D366;text-decoration:none;display:flex;align-items:center;justify-content:center" title="WhatsApp">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+        </a>
+        <a class="c-btn" href="sms:+91${c.mobile.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="background:rgba(91,141,239,0.12);color:var(--blue);text-decoration:none;display:flex;align-items:center;justify-content:center" title="SMS">💬</a>
+        <a class="c-btn" href="tel:+91${c.mobile.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="background:rgba(39,201,122,0.1);color:var(--green);text-decoration:none;display:flex;align-items:center;justify-content:center" title="Call">📞</a>
+        ` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Customer detail sheet ──
+window.openCustDetail = function(id) {
+  const c = customers.find(x => x.id === id);
+  if (!c) return;
+  const stats = custLoanStats(c);
+  const body = $('cust-detail-body');
+  const title = $('cust-detail-title');
+  if (!body) return;
+  title.textContent = c.name || 'Customer';
+
+  body.innerHTML = `
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+      <div style="width:80px;height:80px;border-radius:50%;background:var(--glass);border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+        ${c.photo ? `<img src="${c.photo.data}" style="width:100%;height:100%;object-fit:cover"/>` : `<span style="font-size:34px">${c.gender==='Female'?'👩':'👤'}</span>`}
+      </div>
+      <div>
+        <div style="font-family:'Manrope',sans-serif;font-size:20px;font-weight:700;color:var(--g1)">${c.name||'—'}</div>
+        <div style="font-size:12px;color:var(--tx2);margin-top:2px">${c.code||''}</div>
+        <span style="display:inline-block;margin-top:6px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:${custStatusBg(c.status)};color:${custStatusColor(c.status)}">${custStatusEmoji(c.status)} ${c.status||'Active'}</span>
+      </div>
+    </div>
+
+    <!-- Loan Summary -->
+    <div style="background:var(--glass);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:16px">
+      <div style="font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">📊 Loan Summary</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><div style="font-size:9px;color:var(--tx2);text-transform:uppercase">Total Loans</div><div style="font-size:18px;font-weight:700;color:var(--g1);margin-top:2px">${stats.loans.length}</div></div>
+        <div><div style="font-size:9px;color:var(--tx2);text-transform:uppercase">Total Principal</div><div style="font-size:18px;font-weight:700;color:var(--g1);margin-top:2px">${inr(stats.totalPrincipal)}</div></div>
+        <div><div style="font-size:9px;color:var(--tx2);text-transform:uppercase">Interest Till Date</div><div style="font-size:18px;font-weight:700;color:var(--green);margin-top:2px">${inr(stats.interestTillDate)}</div></div>
+        <div><div style="font-size:9px;color:var(--tx2);text-transform:uppercase">Interest Earned (Closed)</div><div style="font-size:18px;font-weight:700;color:var(--g1);margin-top:2px">${inr(stats.interestEarnedClosed)}</div></div>
+        <div><div style="font-size:9px;color:var(--tx2);text-transform:uppercase">Total Due</div><div style="font-size:18px;font-weight:700;color:var(--tx0);margin-top:2px">${inr(stats.totalPrincipal + stats.interestTillDate)}</div></div>
+        <div><div style="font-size:9px;color:var(--tx2);text-transform:uppercase">Loan Status</div><div style="font-size:13px;font-weight:600;margin-top:4px">${stats.byStatus.Active?`<span style="color:var(--green)">${stats.byStatus.Active} Active</span> `:''}${stats.byStatus.Overdue?`<span style="color:#F5A623">${stats.byStatus.Overdue} Overdue</span> `:''}${stats.byStatus.Closed?`<span style="color:var(--tx2)">${stats.byStatus.Closed} Closed</span>`:''}</div></div>
+      </div>
+      ${stats.loans.length ? `<div style="margin-top:12px;border-top:1px solid var(--bd);padding-top:10px">
+        ${stats.loans.map(l => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(212,161,42,0.05);font-size:12px">
+          <span style="color:var(--g1);font-weight:600">${l.name}</span>
+          <span style="color:var(--tx2)">${fmtDate(l.loanDate)}</span>
+          <span style="color:var(--tx0)">${inr(l.amount)}</span>
+          <span style="color:${l.status==='Active'?'var(--green)':'var(--tx2)'}">${l.status}</span>
+        </div>`).join('')}
+      </div>` : ''}
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      ${c.mobile ? `
+        <a href="https://wa.me/91${c.mobile.replace(/\D/g,'')}" target="_blank"
+           style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.3);border-radius:var(--rs);color:#25D366;font-weight:600;font-size:13px;text-decoration:none">
+          <span style="font-size:18px">💬</span> WhatsApp
+        </a>
+        <a href="sms:+91${c.mobile.replace(/\D/g,'')}"
+           style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;background:rgba(91,141,239,0.12);border:1px solid rgba(91,141,239,0.3);border-radius:var(--rs);color:var(--blue);font-weight:600;font-size:13px;text-decoration:none">
+          <span style="font-size:18px">✉️</span> SMS
+        </a>
+        <a href="tel:+91${c.mobile.replace(/\D/g,'')}"
+           style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;background:rgba(39,201,122,0.08);border:1px solid rgba(39,201,122,0.25);border-radius:var(--rs);color:var(--green);font-weight:600;font-size:13px;text-decoration:none">
+          <span style="font-size:18px">📞</span> Call
+        </a>` : '<div style="font-size:12px;color:var(--tx2);padding:10px">No mobile number saved</div>'}
+    </div>
+    <div style="font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">👤 Personal Info</div>
+    ${detailRow('Mobile', c.mobile)} ${detailRow('Alt Mobile', c.mobile2)} ${detailRow('Address', [c.address, c.city, c.pincode].filter(Boolean).join(', '))} ${detailRow('Father/Husband', c.fathername)} ${detailRow('DOB', c.dob ? fmtDate(c.dob) : '')} ${detailRow('Gender', c.gender)} ${detailRow('Occupation', c.occupation)}
+
+    <!-- KYC -->
+    <div style="font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.8px;margin:12px 0 8px">🪪 KYC</div>
+    ${detailRow('Aadhaar', c.aadhaar)} ${detailRow('PAN', c.pan)} ${detailRow('Voter ID', c.voterid)} ${detailRow('Driving License', c.dl)}
+    ${c.idImg ? `<div style="margin-top:8px"><div style="font-size:10px;color:var(--tx2);margin-bottom:4px">ID Proof Image</div><img src="${c.idImg.data}" onclick="openImgViewer('${c.id}')" style="max-width:100%;border-radius:var(--rs);cursor:pointer;border:1px solid var(--bd)"/></div>` : ''}
+
+    <!-- Financial -->
+    <div style="font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.8px;margin:12px 0 8px">💰 Financial</div>
+    ${detailRow('Annual Income', c.income ? inr(c.income) : '')} ${detailRow('Credit Limit', c.limit ? inr(c.limit) : '')} ${detailRow('Risk Level', c.risk)} ${detailRow('Customer Since', c.since ? fmtDate(c.since) : '')}
+
+    <!-- Guarantor -->
+    ${c.gname ? `<div style="font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.8px;margin:12px 0 8px">🤝 Guarantor</div>${detailRow('Name', c.gname)}${detailRow('Mobile', c.gmobile)}` : ''}
+    ${c.notes ? `<div style="margin-top:10px;padding:10px;background:var(--glass);border-radius:var(--rs);font-size:12px;color:var(--tx1)">📝 ${c.notes}</div>` : ''}
+
+    <div style="display:flex;gap:8px;margin-top:20px">
+      ${currentRole !== 'staff' ? `<button class="btn-primary" style="flex:1" onclick="openCustSheet('${c.id}')">✏️ Edit</button>` : ''}
+      <button class="btn-ghost" style="flex:1;margin-top:0" onclick="exportCustomer('${c.id}')">📤 Export</button>
+    </div>`;
+
+  $('cust-detail-ov').classList.add('open');
+};
+
+function detailRow(label, val) {
+  if (!val) return '';
+  return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(212,161,42,0.05);font-size:12px"><span style="color:var(--tx2)">${label}</span><span style="color:var(--tx0);font-weight:500;text-align:right;max-width:60%">${val}</span></div>`;
+}
+
+// ── Open add/edit sheet ──
+window.openCustSheet = function(id = null) {
+  custEditId = id;
+  custPhoto = null; custIdImg = null;
+  const c = id ? customers.find(x => x.id === id) : null;
+  $('cust-sheet-title').textContent = c ? 'Edit Customer' : 'New Customer';
+
+  // Reset all fields
+  ['cf-code','cf-name','cf-fathername','cf-mobile','cf-mobile2','cf-address','cf-city',
+   'cf-pincode','cf-aadhaar','cf-pan','cf-voterid','cf-dl','cf-income','cf-limit',
+   'cf-notes','cf-gname','cf-gmobile','cf-occupation'].forEach(id => { const el=$(id); if(el) el.value = c ? (c[id.replace('cf-','')] || '') : ''; });
+
+  if ($('cf-dob')) $('cf-dob').value = c?.dob || '';
+  if ($('cf-since')) $('cf-since').value = c?.since || '';
+  if ($('cf-gender')) $('cf-gender').value = c?.gender || '';
+  if ($('cf-status')) $('cf-status').value = c?.status || 'Active';
+  if ($('cf-risk')) $('cf-risk').value = c?.risk || 'Low';
+
+  // Photo preview
+  const prev = $('cust-photo-preview');
+  if (prev) prev.innerHTML = c?.photo ? `<img src="${c.photo.data}" style="width:100%;height:100%;object-fit:cover;border-radius:10px"/>` : '👤';
+  if (c?.photo) custPhoto = c.photo;
+
+  // ID image
+  renderCustIdUpload(c?.idImg || null);
+  if (c?.idImg) custIdImg = c.idImg;
+
+  // Delete btn
+  const db2 = $('cf-delete-btn');
+  if (db2) db2.style.display = (c && currentRole === 'admin') ? 'block' : 'none';
+
+  $('cust-ov').classList.add('open');
+  $('cust-detail-ov').classList.remove('open');
+};
+
+window.closeCustSheet = function() { $('cust-ov').classList.remove('open'); custEditId = null; };
+
+function renderCustIdUpload(existing) {
+  const area = $('cust-id-upload-area');
+  if (!area) return;
+  if (custIdImg || existing) {
+    const r = custIdImg || existing;
+    area.innerHTML = `<div class="receipt-uploaded"><div class="receipt-uploaded-info"><div class="receipt-uploaded-ic">${r.type?.includes('pdf') ? '📄' : '🪪'}</div><div><div class="receipt-uploaded-lbl">ID uploaded</div><div class="receipt-uploaded-sub">${r.name||'id document'}</div></div></div><div class="receipt-actions"><button class="receipt-btn receipt-view-btn" onclick="openIdImgViewer()">👁 View</button><button class="receipt-btn receipt-remove-btn" onclick="custIdImg=null;renderCustIdUpload(null)">✕</button></div></div>`;
+  } else {
+    area.innerHTML = `<div class="receipt-zone"><input type="file" accept="image/*,.pdf" onchange="custIdFileChosen(event)"/><div class="receipt-zone-ic">🪪</div><div class="receipt-zone-t">Tap to upload ID proof</div><div class="receipt-zone-s">Aadhaar / PAN / Voter ID image or PDF</div></div>`;
+  }
+}
+
+window.custPhotoChosen = function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    custPhoto = { data: ev.target.result, type: file.type, name: file.name };
+    const prev = $('cust-photo-preview');
+    if (prev) prev.innerHTML = `<img src="${custPhoto.data}" style="width:100%;height:100%;object-fit:cover;border-radius:10px"/>`;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.custIdFileChosen = function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('⚠️ File too large (max 5MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => { custIdImg = { data: ev.target.result, type: file.type, name: file.name }; renderCustIdUpload(null); };
+  reader.readAsDataURL(file);
+};
+
+window.openIdImgViewer = function() {
+  const r = custIdImg; if (!r) return;
+  $('receipt-ov-content').innerHTML = r.type?.includes('pdf') ? `<iframe class="receipt-ov-pdf" src="${r.data}"></iframe>` : `<img class="receipt-ov-img" src="${r.data}" alt="ID"/>`;
+  $('receipt-ov').classList.add('open');
+};
+
+// ── Save customer ──
+window.saveCustomer = async function() {
+  const name = $('cf-name')?.value.trim();
+  if (!name) { toast('⚠️ Customer name is required'); return; }
+
+  const c = {
+    id: custEditId || uid(),
+    code: $('cf-code')?.value.trim() || ('CUST-' + Date.now().toString(36).toUpperCase()),
+    name, status: $('cf-status')?.value || 'Active',
+    fathername: $('cf-fathername')?.value.trim() || '',
+    gender: $('cf-gender')?.value || '',
+    dob: $('cf-dob')?.value || '',
+    occupation: $('cf-occupation')?.value.trim() || '',
+    mobile: $('cf-mobile')?.value.trim() || '',
+    mobile2: $('cf-mobile2')?.value.trim() || '',
+    address: $('cf-address')?.value.trim() || '',
+    city: $('cf-city')?.value.trim() || '',
+    pincode: $('cf-pincode')?.value.trim() || '',
+    aadhaar: $('cf-aadhaar')?.value.trim() || '',
+    pan: $('cf-pan')?.value.trim() || '',
+    voterid: $('cf-voterid')?.value.trim() || '',
+    dl: $('cf-dl')?.value.trim() || '',
+    income: parseFloat($('cf-income')?.value) || 0,
+    limit: parseFloat($('cf-limit')?.value) || 0,
+    risk: $('cf-risk')?.value || 'Low',
+    since: $('cf-since')?.value || '',
+    gname: $('cf-gname')?.value.trim() || '',
+    gmobile: $('cf-gmobile')?.value.trim() || '',
+    notes: $('cf-notes')?.value.trim() || '',
+  };
+  if (custPhoto) c.photo = custPhoto;
+  if (custIdImg) c.idImg = custIdImg;
+
+  if (fbOn) { await fbWriteCustomer(c); }
+  const idx = customers.findIndex(x => x.id === c.id);
+  if (idx >= 0) customers[idx] = c; else customers.unshift(c);
+  saveCustomersLocal();
+  renderCustomers();
+  closeCustSheet();
+  toast(custEditId ? '✅ Customer updated' : '✅ Customer added');
+};
+
+// ── Delete customer ──
+window.deleteCustomer = function() {
+  if (!custEditId || currentRole !== 'admin') return;
+  if (!confirm('Delete this customer? This cannot be undone.')) return;
+  fbDeleteCustomer(custEditId);
+  customers = customers.filter(x => x.id !== custEditId);
+  saveCustomersLocal();
+  renderCustomers();
+  closeCustSheet();
+  toast('🗑️ Customer deleted');
+};
+
+// ── Filter ──
+window.setCustFilter = function(f) {
+  custFilter = f;
+  renderCustomers();
+};
+
+// ── Export single customer as text ──
+window.exportCustomer = function(id) {
+  const c = customers.find(x => x.id === id);
+  if (!c) return;
+  const stats = custLoanStats(c);
+  const rows = [
+    ['Customer Code', c.code], ['Name', c.name], ['Status', c.status],
+    ['Mobile', c.mobile], ['Alt Mobile', c.mobile2],
+    ['Address', [c.address, c.city, c.pincode].filter(Boolean).join(', ')],
+    ['Aadhaar', c.aadhaar], ['PAN', c.pan],
+    ['Father/Husband', c.fathername], ['DOB', c.dob], ['Gender', c.gender],
+    ['Occupation', c.occupation], ['Risk Level', c.risk],
+    ['Annual Income', c.income ? inr(c.income) : ''],
+    ['Credit Limit', c.limit ? inr(c.limit) : ''],
+    ['Customer Since', c.since], ['Guarantor', c.gname],
+    ['Guarantor Mobile', c.gmobile], ['Notes', c.notes],
+    ['', ''],
+    ['--- LOAN SUMMARY ---', ''],
+    ['Total Loans', stats.loans.length],
+    ['Active Loans', stats.byStatus.Active],
+    ['Overdue Loans', stats.byStatus.Overdue],
+    ['Closed Loans', stats.byStatus.Closed],
+    ['Total Principal', stats.totalPrincipal],
+    ['Interest Till Date (Active)', stats.interestTillDate],
+    ['Total Due', stats.totalPrincipal + stats.interestTillDate],
+    ['Interest Earned (Closed)', stats.interestEarnedClosed],
+  ];
+  const csv = rows.filter(r => r[1] !== '' && r[1] !== undefined)
+    .map(r => `"${r[0]}","${r[1]}"`).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${c.code || c.name}_${localDate()}.csv`;
+  a.click();
+  toast('📤 Exported');
+};
+
+// ── Export all customers ──
+window.exportAllCustomers = function() {
+  if (!customers.length) { toast('No customers to export'); return; }
+  const header = 'Code,Name,Status,Mobile,Address,Aadhaar,PAN,Risk,Loans,Principal,Interest Due,Interest Earned';
+  const rows = customers.map(c => {
+    const s = custLoanStats(c);
+    return `"${c.code}","${c.name}","${c.status}","${c.mobile}","${[c.address,c.city,c.pincode].filter(Boolean).join(' ')}","${c.aadhaar}","${c.pan}","${c.risk}",${s.loans.length},${s.totalPrincipal},${s.interestTillDate},${s.interestEarnedClosed}`;
+  });
+  const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `customers_${localDate()}.csv`;
+  a.click();
+  toast('📤 All customers exported');
+};
+
+window.openImgViewer = function(custId) {
+  const c = customers.find(x => x.id === custId);
+  if (!c?.idImg) return;
+  const r = c.idImg;
+  $('receipt-ov-content').innerHTML = r.type?.includes('pdf')
+    ? `<iframe class="receipt-ov-pdf" src="${r.data}"></iframe>`
+    : `<img class="receipt-ov-img" src="${r.data}" alt="ID Proof"/>`;
+  $('receipt-ov').classList.add('open');
+};
+  loadCustomers();
+  renderCustomers();
+}
+
 // THEME SWITCHER
 // ══════════════════════════════════════════
 const THEME_KEY = 'ak_theme_v1';
@@ -3475,6 +3799,9 @@ if (!storedCfg) {
 
 // Signal module is ready — flush any queued onclick calls
 if (typeof window._moduleReady === 'function') window._moduleReady();
+
+// Boot customers
+bootCustomers();
 
 // Auto-fetch live gold rate on boot (silent)
 setTimeout(() => fetchLiveGoldRate(true), 1500);
