@@ -3762,6 +3762,9 @@ window.openImgViewer = function(custId) {
     : `<img class="receipt-ov-img" src="${r.data}" alt="ID Proof"/>`;
   $('receipt-ov').classList.add('open');
 };
+
+// ── Boot customers ──
+function bootCustomers() {
   loadCustomers();
   renderCustomers();
 }
