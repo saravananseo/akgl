@@ -1589,10 +1589,11 @@ const firebaseConfig = {
 
       <!-- Photo + Code row -->
       <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
-        <div style="position:relative;cursor:pointer" onclick="$('cust-photo-input').click()">
+        <div style="position:relative;cursor:pointer;width:72px;height:72px">
           <div id="cust-photo-preview" style="width:72px;height:72px;border-radius:12px;background:var(--glass);border:2px dashed var(--bd);display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden">👤</div>
-          <div style="position:absolute;bottom:-4px;right:-4px;width:22px;height:22px;border-radius:50%;background:var(--g1);display:flex;align-items:center;justify-content:center;font-size:11px">📷</div>
-          <input type="file" id="cust-photo-input" accept="image/*" style="display:none" onchange="custPhotoChosen(event)"/>
+          <div style="position:absolute;bottom:-4px;right:-4px;width:22px;height:22px;border-radius:50%;background:var(--g1);display:flex;align-items:center;justify-content:center;font-size:11px;pointer-events:none">📷</div>
+          <input type="file" id="cust-photo-input" accept="image/*" onchange="custPhotoChosen(event)"
+            style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2"/>
         </div>
         <div style="flex:1">
           <div class="fg" style="margin-bottom:8px">
@@ -3617,6 +3618,7 @@ function renderCustIdUpload(existing) {
 
 window.custPhotoChosen = function(e) {
   const file = e.target.files[0]; if (!file) return;
+  if (file.size > 3 * 1024 * 1024) { toast('⚠️ Photo too large (max 3MB)'); return; }
   const reader = new FileReader();
   reader.onload = ev => {
     custPhoto = { data: ev.target.result, type: file.type, name: file.name };
