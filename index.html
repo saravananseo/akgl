@@ -1483,7 +1483,7 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
     <div class="sheet-handle"></div>
     <div class="sheet-hd">
       <div class="sheet-title" id="cust-detail-title">Customer</div>
-      <button class="sheet-close" onclick="$('cust-detail-ov').classList.remove('open')">✕</button>
+      <button class="sheet-close" onclick="closeCustDetail()">✕</button>
     </div>
     <div class="sheet-body" id="cust-detail-body"></div>
   </div>
@@ -1776,7 +1776,7 @@ const firebaseConfig = {
     'goMapStep','goPreviewStep','doImport','fileChosen','dzOver','dzDrop',
     'toggleItemsCard','onSearchInput','toast','openCustSheet','closeCustSheet',
     'saveCustomer','deleteCustomer','setCustFilter','exportCustomer','exportAllCustomers',
-    'openCustDetail','custPhotoChosen','custIdFileChosen','openIdImgViewer','openImgViewer'];
+    'openCustDetail','closeCustDetail','custPhotoChosen','custIdFileChosen','openIdImgViewer','openImgViewer'];
   window._pendingCalls = [];
   fns.forEach(name => {
     window[name] = function(...args) {
@@ -3481,6 +3481,8 @@ function renderCustomers() {
 }
 
 // ── Customer detail sheet ──
+window.closeCustDetail = function() { $('cust-detail-ov').classList.remove('open'); };
+
 window.openCustDetail = function(id) {
   const c = customers.find(x => x.id === id);
   if (!c) return;
