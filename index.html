@@ -969,6 +969,15 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#FFFFFF
 }
 html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f7f1e8); border-color: rgba(139,90,40,0.14); }
 
+/* ── REMINDER SENT BADGE ── */
+.reminder-sent-badge { display:inline-flex;align-items:center;gap:4px;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.3);color:#25D366;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700; }
+.reminder-card { background:var(--glass);border:1px solid var(--bd);border-radius:var(--rs);padding:14px;margin-bottom:10px;transition:opacity 0.3s; }
+.reminder-card.sent { opacity:0.5; }
+.reminder-msg-box { background:rgba(37,211,102,0.05);border:1px solid rgba(37,211,102,0.15);border-radius:var(--rs);padding:10px 12px;font-size:12px;color:var(--tx1);line-height:1.6;margin:10px 0;white-space:pre-wrap; }
+.reminder-actions { display:flex;gap:8px;margin-top:10px; }
+.wa-send-btn { flex:1;padding:10px;background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.35);border-radius:var(--rs);color:#25D366;font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px; }
+.skip-btn { padding:10px 14px;background:var(--glass);border:1px solid var(--bd);border-radius:var(--rs);color:var(--tx2);font-size:12px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer; }
+
 .receipt-zone {
   border: 2px dashed var(--bd); border-radius: var(--rs);
   padding: 18px 16px; text-align: center; cursor: pointer;
@@ -1095,7 +1104,7 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
 .card-items-toggle.open .card-items-toggle-ic { transform: rotate(180deg); }
 .card-items-body { display: none; padding: 0 12px 12px; overflow-x: auto; }
 .card-items-body.open { display: block; }
-.items-tbl { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 560px; }
+.items-tbl { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 660px; }
 .items-tbl th {
   background: rgba(212,161,42,0.08); color: var(--tx1); padding: 7px 8px;
   text-align: left; font-weight: 600; text-transform: uppercase;
@@ -1302,7 +1311,7 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
       </div>
       <button onclick="exportAllCustomers()" style="padding:9px 12px;background:rgba(212,161,42,0.1);border:1px solid var(--bd);border-radius:var(--rs);color:var(--g1);font-size:12px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0">📤 Export</button>
     </div>
-    <div style="display:flex;gap:6px;overflow-x:auto;padding:8px 16px 10px;scrollbar-width:none">
+    <div style="display:flex;gap:6px;overflow-x:auto;padding:8px 16px 6px;scrollbar-width:none">
       <button class="cust-chip act" id="cf-All"        onclick="setCustFilter('All')">All</button>
       <button class="cust-chip"     id="cf-Active"     onclick="setCustFilter('Active')">🟢 Active</button>
       <button class="cust-chip"     id="cf-Closed"     onclick="setCustFilter('Closed')">⚫ Closed</button>
@@ -1310,8 +1319,25 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
       <button class="cust-chip"     id="cf-Defaulter"  onclick="setCustFilter('Defaulter')">🔴 Defaulter</button>
       <button class="cust-chip"     id="cf-Blacklisted" onclick="setCustFilter('Blacklisted')">⛔ Blacklisted</button>
     </div>
+    <div style="padding:0 16px 10px">
+      <button onclick="openBulkReminder()" style="width:100%;padding:11px;background:linear-gradient(135deg,rgba(37,211,102,0.15),rgba(37,211,102,0.08));border:1px solid rgba(37,211,102,0.35);border-radius:var(--rs);color:#25D366;font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+        📨 Send WhatsApp Reminders to Overdue &amp; Defaulters
+      </button>
+    </div>
     <div id="cust-list" style="padding-bottom:80px"></div>
   </div>
+
+<!-- BULK WHATSAPP REMINDER OVERLAY -->
+<div class="sheet-ov" id="reminder-ov" onclick="sheetOvClick(event,'reminder-ov')">
+  <div class="sheet" style="max-height:92vh">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hd">
+      <div class="sheet-title">📨 WhatsApp Reminders</div>
+      <button class="sheet-close" onclick="closeReminder()">✕</button>
+    </div>
+    <div class="sheet-body" id="reminder-body"></div>
+  </div>
+</div>
 
 <!-- ══ BOTTOM NAV ══ -->
 <div class="bnav">
@@ -1776,7 +1802,9 @@ const firebaseConfig = {
     'goMapStep','goPreviewStep','doImport','fileChosen','dzOver','dzDrop',
     'toggleItemsCard','onSearchInput','toast','openCustSheet','closeCustSheet',
     'saveCustomer','deleteCustomer','setCustFilter','exportCustomer','exportAllCustomers',
-    'openCustDetail','closeCustDetail','custPhotoChosen','custIdFileChosen','openIdImgViewer','openImgViewer'];
+    'openCustDetail','closeCustDetail','custPhotoChosen','custIdFileChosen','openIdImgViewer','openImgViewer',
+    'openBulkReminder','closeReminder','markReminderSent',
+    'hallmarkPhotoChosen','viewHallmarkPhoto'];
   window._pendingCalls = [];
   fns.forEach(name => {
     window[name] = function(...args) {
@@ -2148,7 +2176,7 @@ function renderLoans() {
       </div>
       <div class="card-items-body" id="cibody-${l.id}">
         <table class="items-tbl">
-          <thead><tr><th>Type</th><th>Item</th><th>Qty</th><th>Gross Wt</th><th>Net Wt</th><th>Purity</th><th>Value</th><th>80% Val</th><th>P/L</th></tr></thead>
+          <thead><tr><th>Type</th><th>Item</th><th>Qty</th><th>Gross Wt</th><th>Net Wt</th><th>Purity</th><th>Hallmark</th><th>Value</th><th>80% Val</th><th>P/L</th></tr></thead>
           <tbody>
             ${(()=>{
               const GOLD_RATE_22K = liveGoldRate22K;
@@ -2192,13 +2220,25 @@ function renderLoans() {
                 const typeHtml = typeObj
                   ? `<span title="${typeObj.label}" style="display:inline-flex;width:22px;height:22px">${typeObj.svg}</span>`
                   : '—';
+                const hStatus = it.hallmarkStatus || '';
+                const hBadge = hStatus === 'Verified'
+                  ? `<span style="color:var(--green);font-weight:700">✅</span>`
+                  : hStatus === 'Fake'
+                  ? `<span style="color:var(--red);font-weight:700">🚫</span>`
+                  : hStatus === 'Disputed'
+                  ? `<span style="color:var(--red);font-weight:700">❌</span>`
+                  : hStatus === 'Unverified'
+                  ? `<span style="color:#F5A623;font-weight:700">⚠️</span>`
+                  : `<span style="color:var(--tx2)">—</span>`;
+                const huidDisplay = it.huid ? `<div style="font-size:9px;color:var(--tx2);letter-spacing:1px">${it.huid}</div>` : '';
                 return `<tr>
                   <td>${typeHtml}</td>
                   <td>${it.item||'—'}</td>
                   <td>${it.qty||'—'}</td>
                   <td style="color:var(--tx2)">${gwt?gwt+'g':'—'}</td>
                   <td style="font-weight:600">${nwt?nwt+'g':'—'}</td>
-                  <td>${it.purity||'—'}</td>
+                  <td>${it.purity||'—'}${it.hPurityStamp?`<div style="font-size:9px;color:var(--tx2)">${it.hPurityStamp}</div>`:''}</td>
+                  <td>${hBadge}${huidDisplay}</td>
                   <td>${val?inr(val):'—'}</td>
                   <td style="color:var(--g2)">${val80?inr(val80):'—'}</td>
                   <td>${plHtml}</td>
@@ -2489,6 +2529,87 @@ function renderItemsForm() {
             oninput="itemUpdate(${i},'value',this.value,true)"/>
         </div>
       </div>
+
+      <!-- Hallmark Verification -->
+      <div style="margin-top:10px;padding:12px;background:rgba(212,161,42,0.05);border:1px solid rgba(212,161,42,0.18);border-radius:var(--rs)">
+        <div style="font-size:9px;color:var(--tx1);text-transform:uppercase;letter-spacing:.9px;font-weight:700;margin-bottom:10px">🔖 BIS Hallmark Verification</div>
+
+        <!-- Row 1: Status + Purity Stamp -->
+        <div class="item-row-grid3" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
+          <div>
+            <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Verification Status</div>
+            <select class="item-fi" onchange="itemUpdate(${i},'hallmarkStatus',this.value)">
+              <option value=""           ${!it.hallmarkStatus?'selected':''}>🔍 Not Checked</option>
+              <option value="Verified"   ${it.hallmarkStatus==='Verified'?'selected':''}>✅ Verified</option>
+              <option value="Unverified" ${it.hallmarkStatus==='Unverified'?'selected':''}>⚠️ Unverified</option>
+              <option value="Disputed"   ${it.hallmarkStatus==='Disputed'?'selected':''}>❌ Disputed</option>
+              <option value="Fake"       ${it.hallmarkStatus==='Fake'?'selected':''}>🚫 Fake</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Purity Stamp</div>
+            <select class="item-fi" onchange="itemUpdate(${i},'hPurityStamp',this.value)">
+              <option value=""    ${!it.hPurityStamp?'selected':''}>— Select —</option>
+              <option value="999" ${it.hPurityStamp==='999'?'selected':''}>999 (24K)</option>
+              <option value="958" ${it.hPurityStamp==='958'?'selected':''}>958 (23K)</option>
+              <option value="916" ${it.hPurityStamp==='916'?'selected':''}>916 (22K)</option>
+              <option value="875" ${it.hPurityStamp==='875'?'selected':''}>875 (21K)</option>
+              <option value="750" ${it.hPurityStamp==='750'?'selected':''}>750 (18K)</option>
+              <option value="585" ${it.hPurityStamp==='585'?'selected':''}>585 (14K)</option>
+              <option value="375" ${it.hPurityStamp==='375'?'selected':''}>375 (9K)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: HUID + BIS lookup button -->
+        <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px">
+          <div style="flex:1">
+            <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">HUID (6-char BIS number)</div>
+            <input class="item-fi" type="text" placeholder="e.g. AB1C2D" maxlength="6" value="${it.huid||''}"
+              style="text-transform:uppercase;letter-spacing:2px;font-weight:700" oninput="itemUpdate(${i},'huid',this.value.toUpperCase())"/>
+          </div>
+          <a href="https://www.bis.gov.in/index.php/hallmarking/hallmark-registration-details/${it.huid||''}" target="_blank"
+             style="padding:9px 12px;background:rgba(212,161,42,0.12);border:1px solid var(--bd);border-radius:var(--rs);color:var(--g1);font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:4px;margin-bottom:0"
+             title="Verify on BIS portal">🔍 BIS</a>
+        </div>
+
+        <!-- Row 3: Assaying centre + Year -->
+        <div class="item-row-grid3" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+          <div>
+            <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Assaying Centre</div>
+            <input class="item-fi" type="text" placeholder="BIS centre name" value="${it.hCentre||''}"
+              oninput="itemUpdate(${i},'hCentre',this.value)"/>
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Hallmark Year</div>
+            <input class="item-fi" type="text" placeholder="e.g. 2023" maxlength="4" value="${it.hYear||''}"
+              oninput="itemUpdate(${i},'hYear',this.value)"/>
+          </div>
+        </div>
+
+        <!-- Hallmark Photo -->
+        <div>
+          <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Hallmark Stamp Photo</div>
+          ${it.hPhoto
+            ? `<div style="display:flex;align-items:center;gap:10px;background:rgba(39,201,122,0.07);border:1px solid rgba(39,201,122,0.25);border-radius:var(--rs);padding:8px 12px">
+                <img src="${it.hPhoto}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="viewHallmarkPhoto(${i})"/>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:600;color:var(--green)">✅ Photo uploaded</div>
+                  <div style="font-size:10px;color:var(--tx2);margin-top:2px">Tap to view</div>
+                </div>
+                <button onclick="itemUpdate(${i},'hPhoto','')" style="background:rgba(232,85,85,0.1);border:none;border-radius:50%;width:24px;height:24px;color:var(--red);cursor:pointer;font-size:12px">✕</button>
+              </div>`
+            : `<div class="receipt-zone" style="padding:12px;margin-bottom:0">
+                <input type="file" accept="image/*" onchange="hallmarkPhotoChosen(event,${i})"/>
+                <div class="receipt-zone-ic" style="font-size:20px">📷</div>
+                <div class="receipt-zone-t" style="font-size:12px">Tap to capture hallmark stamp</div>
+              </div>`
+          }
+        </div>
+
+        ${it.hallmarkStatus === 'Verified' ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(39,201,122,0.08);border:1px solid rgba(39,201,122,0.25);border-radius:var(--rs);font-size:11px;color:var(--green);font-weight:600">✅ BIS Hallmarked · ${it.hPurityStamp||''} · HUID: ${it.huid||'—'}</div>` : ''}
+        ${it.hallmarkStatus === 'Fake' || it.hallmarkStatus === 'Disputed' ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(232,85,85,0.08);border:1px solid rgba(232,85,85,0.25);border-radius:var(--rs);font-size:11px;color:var(--red);font-weight:600">⚠️ Flag this item — ${it.hallmarkStatus} hallmark detected</div>` : ''}
+      </div>
     </div>`;
   }).join('');
 
@@ -2586,8 +2707,28 @@ function updateCollateralSummary() {
   }
 }
 
+window.hallmarkPhotoChosen = function(e, idx) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > 3 * 1024 * 1024) { toast('⚠️ Photo too large (max 3MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    itemRows[idx].hPhoto = ev.target.result;
+    renderItemsForm();
+    toast('📷 Hallmark photo saved');
+  };
+  reader.readAsDataURL(file);
+};
+
+window.viewHallmarkPhoto = function(idx) {
+  const photo = itemRows[idx]?.hPhoto;
+  if (!photo) return;
+  $('receipt-ov-content').innerHTML = `<img class="receipt-ov-img" src="${photo}" alt="Hallmark"/>`;
+  $('receipt-ov').classList.add('open');
+};
+
 window.addItemRow = function() {
-  itemRows.push({ type: '', item: '', qty: 1, gwt: '', wt: '', purity: '22K', value: '', autoVal: true });
+  itemRows.push({ type:'', item:'', qty:1, gwt:'', wt:'', purity:'22K', value:'', autoVal:true,
+    hallmarkStatus:'', hPurityStamp:'', huid:'', hCentre:'', hYear:'', hPhoto:'' });
   renderItemsForm();
 };
 
@@ -2989,6 +3130,7 @@ window.sheetOvClick = function(e, id) {
     if (id === 'roles-ov')       closeRoles();
     if (id === 'cust-ov')        closeCustSheet();
     if (id === 'cust-detail-ov') $('cust-detail-ov').classList.remove('open');
+    if (id === 'reminder-ov')    closeReminder();
   }
 };
 
@@ -3766,6 +3908,120 @@ window.openImgViewer = function(custId) {
     : `<img class="receipt-ov-img" src="${r.data}" alt="ID Proof"/>`;
   $('receipt-ov').classList.add('open');
 };
+
+// ══════════════════════════════════════════
+// WHATSAPP BULK REMINDER
+// ══════════════════════════════════════════
+const REMINDER_KEY = 'ak_reminders_v1'; // { custId: 'YYYY-MM-DD' }
+
+function getRemindersSent() {
+  try { return JSON.parse(localStorage.getItem(REMINDER_KEY) || '{}'); } catch { return {}; }
+}
+function markReminderSent(custId) {
+  const data = getRemindersSent();
+  data[custId] = localDate();
+  localStorage.setItem(REMINDER_KEY, JSON.stringify(data));
+  // Update the card UI
+  const badge = $('rsent-' + custId);
+  if (badge) badge.innerHTML = '<span class="reminder-sent-badge">✅ Sent today</span>';
+  const card = $('rcard-' + custId);
+  if (card) card.classList.add('sent');
+}
+
+function buildReminderMessage(c, stats) {
+  const overdueLoanNames = stats.loans
+    .filter(l => {
+      const days = Math.floor((new Date(localDate()+'T00:00:00') - new Date(l.loanDate+'T00:00:00')) / 86400000);
+      return l.status === 'Active' && days >= 365;
+    })
+    .map(l => l.name).join(', ');
+
+  const totalDue = stats.totalPrincipal + stats.interestTillDate;
+  const months = Math.max(...stats.loans.filter(l=>l.status==='Active').map(l=>calcMonths(l.loanDate, localDate())||0));
+
+  return `Dear ${c.name},
+
+Your gold loan${overdueLoanNames ? ` (${overdueLoanNames})` : ''} with A&S Gold Loans has exceeded ${months} months.
+
+📌 Total Principal: ${inr(stats.totalPrincipal)}
+💰 Interest Accrued: ${inr(stats.interestTillDate)}
+⚠️ Total Due: ${inr(totalDue)}
+
+Kindly visit our office or contact us immediately to settle your dues and collect your gold.
+
+Thank you,
+A&S Gold Loans`;
+}
+
+window.openBulkReminder = function() {
+  const sentData = getRemindersSent();
+  const today = localDate();
+
+  // Get overdue + defaulter customers with a mobile number
+  const targets = customers.filter(c => {
+    return (c.status === 'Overdue' || c.status === 'Defaulter') && c.mobile;
+  });
+
+  // Also include customers whose loans are overdue (>1 year) even if status not set
+  const fromLoans = customers.filter(c => {
+    if (!c.mobile) return false;
+    if (c.status === 'Overdue' || c.status === 'Defaulter') return false; // already included
+    const stats = custLoanStats(c);
+    return stats.byStatus.Overdue > 0;
+  });
+
+  const all = [...targets, ...fromLoans];
+
+  const body = $('reminder-body');
+  if (!all.length) {
+    body.innerHTML = `<div class="empty"><div class="empty-ic">✅</div><div class="empty-t">No Overdue Customers</div><div class="empty-s">All customers are up to date.</div></div>`;
+    $('reminder-ov').classList.add('open');
+    return;
+  }
+
+  const sentToday = all.filter(c => sentData[c.id] === today).length;
+  const pending   = all.length - sentToday;
+
+  body.innerHTML = `
+    <div style="background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.2);border-radius:var(--rs);padding:12px 14px;margin-bottom:14px;font-size:13px">
+      <strong style="color:#25D366">${pending} reminder${pending!==1?'s':''} pending</strong>
+      ${sentToday ? ` · <span style="color:var(--tx2)">${sentToday} sent today</span>` : ''}
+      <div style="font-size:11px;color:var(--tx2);margin-top:4px">Tap WhatsApp to open the chat with pre-filled message. App marks it as sent automatically.</div>
+    </div>
+    ${all.map(c => {
+      const stats  = custLoanStats(c);
+      const msg    = encodeURIComponent(buildReminderMessage(c, stats));
+      const mobile = c.mobile.replace(/\D/g,'');
+      const waUrl  = `https://wa.me/91${mobile}?text=${msg}`;
+      const sent   = sentData[c.id] === today;
+      return `
+      <div class="reminder-card ${sent?'sent':''}" id="rcard-${c.id}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:var(--tx0)">${c.name}</div>
+            <div style="font-size:11px;color:var(--tx2)">${c.code||''} · 📱 ${c.mobile}</div>
+          </div>
+          <div id="rsent-${c.id}">${sent ? '<span class="reminder-sent-badge">✅ Sent today</span>' : `<span style="background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);color:#F5A623;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700">${c.status||'Overdue'}</span>`}</div>
+        </div>
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:4px">📌 Due: ${inr(stats.totalPrincipal + stats.interestTillDate)} · ${stats.loans.length} loan${stats.loans.length!==1?'s':''}</div>
+        <div class="reminder-actions">
+          <a class="wa-send-btn" href="${waUrl}" target="_blank" onclick="setTimeout(()=>markReminderSent('${c.id}'),1000)">
+            💬 WhatsApp
+          </a>
+          <a class="wa-send-btn" href="sms:+91${mobile}?body=${msg}" style="background:rgba(91,141,239,0.12);border-color:rgba(91,141,239,0.3);color:var(--blue)" onclick="setTimeout(()=>markReminderSent('${c.id}'),1000)">
+            ✉️ SMS
+          </a>
+          <button class="skip-btn" onclick="markReminderSent('${c.id}')">Skip</button>
+        </div>
+      </div>`;
+    }).join('')}
+    <button onclick="closeReminder()" style="width:100%;padding:13px;background:var(--glass);border:1px solid var(--bd);border-radius:var(--rs);color:var(--tx1);font-size:14px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;margin-top:6px">Done</button>`;
+
+  $('reminder-ov').classList.add('open');
+};
+
+window.closeReminder = function() { $('reminder-ov').classList.remove('open'); };
+
 
 // ── Boot customers ──
 function bootCustomers() {
