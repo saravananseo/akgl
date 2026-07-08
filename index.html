@@ -3160,8 +3160,16 @@ window.saveLoan = async function() {
   if (itemRows.length) lObj.items = itemRows.filter(it => it.item || it.wt || it.value);
 
   if (fbOn) {
+    closeLoanSheet();
+    toast(editId ? '✅ Loan updated' : '✅ Loan added');
     syncBar('syncing', 'Saving…');
-    await fbWrite(lObj);
+    fbWrite(lObj).then(() => {
+      syncBar('synced', '✓ Saved');
+    }).catch(e => {
+      syncBar('offline', '⚠️ Save failed');
+      toast('⚠️ Failed to save: ' + e.message);
+    });
+    return;
   } else {
     if (editId) {
       const idx = loans.findIndex(l => l.id === editId);
@@ -3189,9 +3197,17 @@ window.askDelete = function(id) {
 };
 window.closeConf = function()   { deleteId = null; $('conf-ov').classList.remove('open'); };
 window.doDelete  = async function() {
-  if (fbOn) { syncBar('syncing','Deleting…'); await fbDelete(deleteId); }
-  else { loans = loans.filter(l => l.id !== deleteId); lsSave(); render(); }
-  closeConf(); toast('🗑️ Deleted');
+  const idToDelete = deleteId;
+  closeConf();
+  if (fbOn) {
+    syncBar('syncing','Deleting…');
+    fbDelete(idToDelete)
+      .then(() => syncBar('synced','✓ Deleted'))
+      .catch(e => { syncBar('offline','⚠️ Delete failed'); toast('⚠️ ' + e.message); });
+  } else {
+    loans = loans.filter(l => l.id !== idToDelete); lsSave(); render();
+  }
+  toast('🗑️ Deleted');
 };
 
 // ══════════════════════════════════════════
