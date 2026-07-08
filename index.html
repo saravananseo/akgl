@@ -1422,7 +1422,7 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:rgba(212,161,42,0.05);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;">
           <span style="font-size:11px;color:var(--tx1);white-space:nowrap">22K Rate (₹/g)</span>
           <input class="item-fi" type="number" id="gold-rate-input" placeholder="Fetching..." style="flex:1;padding:7px 10px;font-size:13px" oninput="onGoldRateChange()" />
-          <button onclick="fetchLiveGoldRate()" style="padding:6px 10px;background:rgba(212,161,42,0.15);border:1px solid var(--bd);border-radius:var(--rs);color:var(--g1);font-size:11px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap">🔄 Live</button>
+          <button onclick="fetchLiveGoldRateManual()" style="padding:6px 10px;background:rgba(212,161,42,0.15);border:1px solid var(--bd);border-radius:var(--rs);color:var(--g1);font-size:11px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap">🔄 Live</button>
         </div>
         <div id="items-container">
           <div class="items-empty">No items added yet. Tap "+ Add Item" to begin.</div>
@@ -1568,6 +1568,26 @@ const firebaseConfig = {
       <button class="sheet-close" onclick="closeAiMatch()">✕</button>
     </div>
     <div class="ai-match-body" id="ai-match-body"></div>
+  </div>
+</div>
+
+<!-- GOLDAPI KEY SETUP -->
+<div class="cfg-ov" id="goldapi-ov">
+  <div class="cfg-box">
+    <div class="cfg-title">📈 Live Gold Rate Setup</div>
+    <div class="cfg-sub">Get a free GoldAPI.io key for accurate real-time INR gold rates. Takes 30 seconds, no card needed.</div>
+    <div class="cfg-steps">
+      <strong>Get your free key:</strong><br/>
+      1. Go to <a href="https://www.goldapi.io/" target="_blank">goldapi.io</a> → Sign Up Free<br/>
+      2. Copy your API key from the dashboard<br/>
+      3. Paste it below<br/><br/>
+      <strong>Free tier:</strong> Real-time rates · No credit card required ✅
+    </div>
+    <input class="cfg-ta" id="goldapi-key-input" type="password"
+      placeholder="Paste your GoldAPI.io key here"
+      style="min-height:52px;font-family:'Inter',sans-serif;font-size:14px"/>
+    <button class="btn-primary" style="margin-top:14px" onclick="saveGoldApiKey()">✅ Save & Fetch Live Rate</button>
+    <button class="btn-ghost" style="margin-top:8px" onclick="$('goldapi-ov').classList.remove('open');fetchLiveGoldRate()">Skip — use best available rate</button>
   </div>
 </div>
 
@@ -1795,7 +1815,7 @@ const firebaseConfig = {
     'closeUpload','openRoles','closeRoles','doLogout','toggleSearch','clearSearch',
     'setStatusFilter','openReceiptViewer','closeReceiptViewer','closeAiMatch',
     'runOrnamentScan','saveGeminiKey','addItemRow','removeItemRow','itemUpdate',
-    'onGoldRateChange','fetchLiveGoldRate','receiptFileChosen','removeReceipt',
+    'onGoldRateChange','fetchLiveGoldRate','fetchLiveGoldRateManual','saveGoldApiKey','receiptFileChosen','removeReceipt',
     'editLoan','askDelete','closeConf','doDelete','saveLoan','livePreview',
     'onStatusChange','sheetOvClick','openCfg','saveFirebaseCfg','useLocal',
     'resetFbCfg','selectRole','pinKey','pinDel','saveRolePin','goStep',
@@ -2620,42 +2640,94 @@ function renderItemsForm() {
 const PURITY_FACTOR = { '24K': 1.0, '22K': 22/24, '18K': 18/24, '14K': 14/24 };
 
 // Module-level live gold rate — updated whenever fetched
-let liveGoldRate22K = 13195; // fallback: today's known rate
+let liveGoldRate22K = 13315; // fallback: today's known rate
+
+const GOLD_API_KEY_STORE = 'ak_goldapi_key_v1';
 
 async function fetchLiveGoldRate(silent = false) {
   const gri = $('gold-rate-input');
+  if (!silent && gri) { gri.placeholder = '⏳ Fetching...'; gri.disabled = true; }
 
-  if (!silent && gri) {
-    gri.placeholder = '⏳ Fetching live rate...';
-    gri.disabled = true;
+  let inrPer22k = null;
+
+  // ── Source 1: GoldAPI.io (free tier, returns INR directly) ──
+  const goldApiKey = localStorage.getItem(GOLD_API_KEY_STORE);
+  if (goldApiKey) {
+    try {
+      const res = await fetch('https://www.goldapi.io/api/XAU/INR', {
+        headers: { 'x-access-token': goldApiKey, 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.price_gram_22k) { inrPer22k = Math.round(d.price_gram_22k); }
+      }
+    } catch {}
   }
 
-  try {
-    const res = await fetch('https://metals.live/api/spot?metals=gold');
-    if (!res.ok) throw new Error('fetch failed');
-    const data = await res.json();
-    const usdPerOz = data?.[0]?.price || data?.gold;
-    if (!usdPerOz) throw new Error('no price');
-
-    const usdPerGram24k = usdPerOz / 31.1035;
-    const fxRes = await fetch('https://api.frankfurter.app/latest?from=USD&to=INR');
-    const fxData = await fxRes.json();
-    const usdToInr = fxData?.rates?.INR;
-    if (!usdToInr) throw new Error('no fx rate');
-
-    const inrPer22k = Math.round(usdPerGram24k * usdToInr * (22/24));
-    liveGoldRate22K = inrPer22k; // store globally for Summary tab
-
-    if (gri) { gri.value = inrPer22k; gri.disabled = false; gri.placeholder = 'e.g. 13195'; onGoldRateChange(); }
-    if (!silent) toast('✅ Live 22K rate: ₹' + inrPer22k.toLocaleString('en-IN') + '/g');
-    else renderStats(); // re-render summary with updated rate
-  } catch(e) {
-    if (gri) { gri.disabled = false; gri.placeholder = 'e.g. 13195'; if (!gri.value) { gri.value = liveGoldRate22K; onGoldRateChange(); } }
-    if (!silent) toast('📌 Using rate: ₹' + liveGoldRate22K.toLocaleString('en-IN') + '/g');
+  // ── Source 2: open.er-api.com — XAU base gives how many USD per 1 XAU ──
+  if (!inrPer22k) {
+    try {
+      const [fxRes, xauRes] = await Promise.all([
+        fetch('https://api.frankfurter.app/latest?from=USD&to=INR'),
+        fetch('https://open.er-api.com/v6/latest/XAU')
+      ]);
+      const fxData  = await fxRes.json();
+      const xauData = await xauRes.json();
+      const usdToInr = fxData?.rates?.INR;
+      // XAU base: rates.USD = USD per troy oz of gold
+      const xauUsd = xauData?.rates?.USD;
+      if (usdToInr && xauUsd) {
+        // USD per gram × INR per USD × 22K factor
+        inrPer22k = Math.round((xauUsd / 31.1035) * usdToInr * (22/24));
+      }
+    } catch {}
   }
+
+  // ── Source 3: metals-api free endpoint ──
+  if (!inrPer22k) {
+    try {
+      const res = await fetch('https://metals.live/api/spot?metals=gold');
+      if (res.ok) {
+        const data = await res.json();
+        const usdPerOz = data?.[0]?.price || data?.gold;
+        const fxRes = await fetch('https://api.frankfurter.app/latest?from=USD&to=INR');
+        const fxData = await fxRes.json();
+        const usdToInr = fxData?.rates?.INR;
+        if (usdPerOz && usdToInr) {
+          inrPer22k = Math.round((usdPerOz / 31.1035) * usdToInr * (22/24));
+        }
+      }
+    } catch {}
+  }
+
+  // ── Fallback ──
+  if (!inrPer22k) {
+    if (gri) { gri.disabled = false; gri.placeholder = 'e.g. 13315'; if (!gri.value) { gri.value = liveGoldRate22K; onGoldRateChange(); } }
+    if (!silent) toast('⚠️ Live fetch failed — using ₹' + liveGoldRate22K.toLocaleString('en-IN') + '/g');
+    return;
+  }
+
+  liveGoldRate22K = inrPer22k;
+  if (gri) { gri.value = inrPer22k; gri.disabled = false; gri.placeholder = 'e.g. 13315'; onGoldRateChange(); }
+  if (!silent) toast('✅ Live 22K rate: ₹' + inrPer22k.toLocaleString('en-IN') + '/g');
+  else renderStats();
 }
 
-function calcAutoValue(it) {
+window.saveGoldApiKey = function() {
+  const key = $('goldapi-key-input').value.trim();
+  if (!key) { toast('⚠️ Please paste your GoldAPI key'); return; }
+  localStorage.setItem(GOLD_API_KEY_STORE, key);
+  $('goldapi-ov').classList.remove('open');
+  toast('✅ GoldAPI key saved');
+  fetchLiveGoldRate();
+};
+
+// Override the manual 🔄 Live button to prompt for key if none set
+window.fetchLiveGoldRateManual = function() {
+  const key = localStorage.getItem(GOLD_API_KEY_STORE);
+  if (!key) { $('goldapi-ov').classList.add('open'); return; }
+  fetchLiveGoldRate();
+};
   const rate22k = parseFloat($('gold-rate-input')?.value) || 0;
   const wt      = parseFloat(it.wt) || 0;
   const purity  = it.purity || '22K';
