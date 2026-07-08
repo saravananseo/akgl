@@ -2728,6 +2728,8 @@ window.fetchLiveGoldRateManual = function() {
   if (!key) { $('goldapi-ov').classList.add('open'); return; }
   fetchLiveGoldRate();
 };
+
+function calcAutoValue(it) {
   const rate22k = parseFloat($('gold-rate-input')?.value) || 0;
   const wt      = parseFloat(it.wt) || 0;
   const purity  = it.purity || '22K';
