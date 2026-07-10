@@ -388,7 +388,7 @@ body::before {
   margin-bottom: 13px; overflow: hidden;
   box-shadow: var(--shadow), inset 0 1px 0 rgba(212,161,42,0.06);
   animation: cardIn 0.32s cubic-bezier(0.22,1,0.36,1) both;
-  transition: transform 0.18s, box-shadow 0.18s;
+  transition: transform 0.18s, box-shadow 0.18s, opacity 0.2s;
 }
 .lcard:active { transform: scale(0.983); box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
 @keyframes cardIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
@@ -1990,6 +1990,8 @@ function startListener() {
   syncBar('syncing', 'Loading…');
   unsub = onSnapshot(collection(db, 'loans'),
     snap => {
+      // Skip render if we just wrote (local update already applied)
+      if (_suppressNextSnapshot) { _suppressNextSnapshot = false; return; }
       loans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       loans.sort((a,b) => (b.loanDate||'').localeCompare(a.loanDate||''));
       if (loans.length === 0) { seedData().forEach(l => fbWrite(l)); return; }
@@ -2001,14 +2003,29 @@ function startListener() {
   );
 }
 
+let _suppressNextSnapshot = false;
+
 async function fbWrite(loan) {
   if (!db) return;
   const { id, ...data } = loan;
-  try { await setDoc(doc(db, 'loans', id), data); } catch {}
+  try {
+    _suppressNextSnapshot = true;
+    await setDoc(doc(db, 'loans', id), data);
+    // Update local loans array immediately so UI stays fresh
+    const idx = loans.findIndex(l => l.id === id);
+    if (idx !== -1) loans[idx] = loan; else loans.unshift(loan);
+    loans.sort((a,b) => (b.loanDate||'').localeCompare(a.loanDate||''));
+    render();
+  } catch(e) { _suppressNextSnapshot = false; throw e; }
 }
 async function fbDelete(id) {
   if (!db) return;
-  try { await deleteDoc(doc(db, 'loans', id)); } catch {}
+  try {
+    _suppressNextSnapshot = true;
+    await deleteDoc(doc(db, 'loans', id));
+    loans = loans.filter(l => l.id !== id);
+    render();
+  } catch(e) { _suppressNextSnapshot = false; throw e; }
 }
 async function fbBatchWrite(arr) {
   if (!db) return;
@@ -2122,19 +2139,19 @@ function renderLoans() {
       return days >= 365;
     });
   }
-  const el   = $('loan-list');
+  const el = $('loan-list');
 
+  // Build HTML first, then set in one shot to avoid blank flash
+  let html = '';
   if (!list.length) {
     const filterMsg = statusFilter ? `No ${statusFilter === 'Overdue' ? 'overdue' : statusFilter.toLowerCase()} loans found.` : (loans.length === 0 ? 'Tap + to record your first gold loan.' : 'Try a different loan number.');
-    el.innerHTML = `<div class="empty">
+    html = `<div class="empty">
       <div class="empty-ic">🪙</div>
       <div class="empty-t">${loans.length === 0 ? 'No Loans Yet' : 'No Results'}</div>
       <div class="empty-s">${filterMsg}${statusFilter ? ' <span onclick="setStatusFilter(\''+statusFilter+'\')" style="color:var(--g1);cursor:pointer;text-decoration:underline">Clear filter</span>' : ''}</div>
     </div>`;
-    return;
-  }
-
-  el.innerHTML = list.map((l, i) => {
+  } else {
+    html = list.map((l, i) => {
     const effRd    = l.releaseDate || (l.status==='Active' ? localDate() : null);
     const m        = calcMonths(l.loanDate, effRd);
     const interest = m !== null ? calcInterest(l.amount, l.rate, m) : null;
@@ -2312,6 +2329,8 @@ function renderLoans() {
       </div>` : ''}
     </div>`;
   }).join('');
+  }
+  el.innerHTML = html;
 }
 
 function renderStats() {
@@ -2429,7 +2448,16 @@ function renderStats() {
   $('s-cl-rate').textContent   = clLoans.length ? (clSR / clLoans.length).toFixed(1) + '%' : '0%';
 }
 
-function render() { renderLoans(); renderStats(); }
+let _renderTimer = null;
+function render() {
+  // Debounce — if called multiple times rapidly (e.g. Firebase batch), only render once
+  if (_renderTimer) clearTimeout(_renderTimer);
+  _renderTimer = setTimeout(() => {
+    renderLoans();
+    renderStats();
+    _renderTimer = null;
+  }, 80);
+}
 
 // Auto-refresh at midnight so dates, months and interest update correctly
 function scheduleMidnightRefresh() {
