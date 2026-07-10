@@ -1383,7 +1383,7 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
         </div>
         <div class="fg">
           <label class="fl" id="f-rd-label">Release Date <span id="f-rd-opt" style="color:var(--tx2);font-weight:400;text-transform:none;letter-spacing:0">(optional for Active)</span></label>
-          <input class="fi" id="f-rd" type="date" oninput="livePreview()" placeholder="Leave blank if Active"/>
+          <input class="fi" id="f-rd" type="date" oninput="livePreview()" onchange="livePreview()" placeholder="Leave blank if Active"/>
         </div>
       </div>
       <div class="frow">
@@ -2949,7 +2949,19 @@ async function geminiDescribeImage(base64, mimeType, apiKey) {
     contents: [{
       parts: [
         { inline_data: { mime_type: mimeType, data: base64 } },
-        { text: `You are an expert jewellery analyst. Examine this image and describe the gold/silver ornaments in detail for identification purposes. Focus on: type (ring/chain/bangle/necklace etc), distinctive features, engravings, stones, clasps, design patterns, approximate size, unique marks. Be specific. Respond ONLY with a JSON object (no markdown): {"description": "...", "types": ["ring","chain",...], "distinctive": "key identifying features in one sentence"}` }
+        { text: `You are an expert jewellery analyst for a gold loan fraud detection system. Examine this image and describe the gold/silver ornaments in maximum detail for physical identification. Focus on:
+1. Type (ring/chain/bangle/necklace/earring/pendant etc.)
+2. Approximate weight appearance (heavy/medium/light)
+3. Design pattern (plain/twisted/filigree/stone-set/engraved etc.)
+4. Stones if any (colour, size, count, setting type)
+5. Clasps, locks, joints, connecting points
+6. Any unique marks, scratches, dents, or defects
+7. Colour tone (yellow gold/rose gold/white gold/silver)
+8. Hallmark or BIS stamp if visible
+9. Distinctive features that would identify THIS SPECIFIC PIECE vs similar items
+
+Respond ONLY with a JSON object (no markdown):
+{"description": "detailed paragraph", "types": ["ring"], "distinctive": "the single most unique identifying feature of this specific piece", "weight_appearance": "heavy/medium/light", "color": "yellow/rose/white/silver"}` }
       ]
     }]
   }, apiKey);
@@ -2958,21 +2970,30 @@ async function geminiDescribeImage(base64, mimeType, apiKey) {
 }
 
 async function geminiCompare(currentDesc, otherDescs, apiKey) {
-  const prompt = `You are a fraud detection expert for a gold loan business.
+  const prompt = `You are a fraud detection expert for a gold loan business. Your job is to identify if the SAME PHYSICAL jewellery item has been pledged multiple times across different loans.
 
-Current ornament being pledged:
-${JSON.stringify(currentDesc)}
+CURRENT ITEM BEING PLEDGED:
+${JSON.stringify(currentDesc, null, 2)}
 
-Compare against these existing loans:
+COMPARE AGAINST THESE EXISTING LOANS:
 ${JSON.stringify(otherDescs.map((l,i) => ({
   index: i,
   loan: l.loanName,
   date: l.loanDate,
   amount: l.amount,
-  description: l.aiDesc ? l.aiDesc.description : 'No photo description available'
+  description: l.description
 })), null, 2)}
 
-For each existing loan, assess if the same physical ornament could have been pledged. Consider type, design, distinctive features. Respond ONLY with JSON array (no markdown): [{"loanIndex": 0, "risk": "HIGH|MEDIUM|LOW|NONE", "confidence": 0-100, "reason": "one sentence"}]`;
+INSTRUCTIONS:
+- Mark HIGH if the descriptions suggest the SAME PHYSICAL ITEM (same design, weight, markings, defects)
+- Mark MEDIUM if very similar but could be a different piece of the same type
+- Mark LOW if same general category but clearly different items
+- Mark NONE if completely different items
+- Be VERY suspicious — even partial matches on distinctive features should be HIGH
+- Weight, purity marks, unique scratches, design details are strong identifiers
+
+Respond ONLY with a JSON array (no markdown, no explanation outside JSON):
+[{"loanIndex": 0, "risk": "HIGH|MEDIUM|LOW|NONE", "confidence": 0-100, "reason": "specific matching features found"}]`;
 
   const text = await geminiPost({ contents: [{ parts: [{ text: prompt }] }] }, apiKey);
   try { return JSON.parse(text.replace(/```json|```/g,'').trim()); }
@@ -2983,60 +3004,78 @@ window.runOrnamentScan = async function() {
   const r = pendingReceipt;
   if (!r?.data || r.type === 'application/pdf') { toast('⚠️ Image receipt required for AI scan'); return; }
 
-  // Check for Gemini API key
   const apiKey = getGeminiKey();
-  if (!apiKey) {
-    $('gemini-key-input').value = '';
-    $('gemini-ov').classList.add('open');
-    return;
-  }
+  if (!apiKey) { $('gemini-key-input').value = ''; $('gemini-ov').classList.add('open'); return; }
 
-  const otherLoans = loans.filter(l => l.receipt?.data && l.receipt.type !== 'application/pdf');
+  // All other loans — with or without photos
+  const otherLoans = loans.filter(l => l.id !== editId);
 
   $('ai-match-body').innerHTML = `
     <div class="ai-scanning">
       <div class="ai-scan-ic">🤖</div>
       <div class="ai-scan-t">Analysing ornaments…</div>
-      <div class="ai-scan-s">Gemini 2.5 Flash is examining the image and comparing against ${otherLoans.length} loan${otherLoans.length!==1?'s':''} with photos.</div>
+      <div class="ai-scan-s">Step 1 of 2: Describing current jewellery photo…</div>
     </div>`;
   $('ai-match-ov').classList.add('open');
 
   try {
-    const base64  = r.data.split(',')[1];
-    const mimeType = r.type;
-
     // Step 1: Describe current image
-    const currentDesc = await geminiDescribeImage(base64, mimeType, apiKey);
+    const base64   = r.data.split(',')[1];
+    const currentDesc = await geminiDescribeImage(base64, r.type, apiKey);
     pendingReceipt.aiDesc = currentDesc;
 
     if (!otherLoans.length) {
       $('ai-match-body').innerHTML = `
-        <div class="ai-desc-box">
-          <div class="ai-desc-lbl">🔍 Ornament Description</div>
-          ${currentDesc.description}
-        </div>
-        <div class="ai-match-card safe">
-          <div class="ai-match-card-hd">
-            <span class="ai-match-loan">✅ No Other Loans to Compare</span>
-            <span class="ai-match-badge safe">CLEAR</span>
-          </div>
-          <div class="ai-match-reason">No other loans with photos found. Description saved for future comparisons.</div>
-        </div>`;
+        <div class="ai-desc-box"><div class="ai-desc-lbl">🔍 Ornament Description</div>${currentDesc.description}</div>
+        <div class="ai-match-card safe"><div class="ai-match-card-hd"><span class="ai-match-loan">✅ No Other Loans</span><span class="ai-match-badge safe">CLEAR</span></div><div class="ai-match-reason">No other loans to compare against.</div></div>`;
       return;
     }
 
-    // Step 2: Compare descriptions
-    const otherDescs = otherLoans.map(l => ({
-      loanName: l.name,
-      loanDate: l.loanDate,
-      amount:   l.amount,
-      aiDesc:   l.receipt.aiDesc || null,
+    // Step 2: Describe any other loans that have photos but no aiDesc yet
+    $('ai-match-body').querySelector('.ai-scan-s').textContent = `Step 2 of 2: Comparing against ${otherLoans.length} loans…`;
+
+    const loansWithDesc = await Promise.all(otherLoans.map(async l => {
+      // Use stored aiDesc if available
+      if (l.receipt?.aiDesc) return { ...l, _desc: l.receipt.aiDesc.description };
+      // Describe photo on-the-fly if has photo but no stored desc
+      if (l.receipt?.data && l.receipt.type !== 'application/pdf') {
+        try {
+          const b64 = l.receipt.data.split(',')[1];
+          const desc = await geminiDescribeImage(b64, l.receipt.type, apiKey);
+          // Save desc back to loan for future scans
+          l.receipt.aiDesc = desc;
+          if (fbOn) fbWrite(l).catch(()=>{}); // persist to Firebase silently
+          return { ...l, _desc: desc.description };
+        } catch { return { ...l, _desc: null }; }
+      }
+      // Fall back to item text data from the loan
+      if (l.items && l.items.length) {
+        const itemText = l.items.map(it =>
+          `${it.type||''} ${it.item||''} ${it.purity||''} ${it.wt?it.wt+'g':''} ${it.huid?'HUID:'+it.huid:''}`
+        ).join('; ');
+        return { ...l, _desc: `Items: ${itemText}` };
+      }
+      return { ...l, _desc: null };
     }));
 
+    const comparableLoans = loansWithDesc.filter(l => l._desc);
+
+    if (!comparableLoans.length) {
+      $('ai-match-body').innerHTML = `
+        <div class="ai-desc-box"><div class="ai-desc-lbl">🔍 Detected Ornaments</div>${currentDesc.description}</div>
+        <div class="ai-match-card safe"><div class="ai-match-card-hd"><span class="ai-match-loan">No comparable data</span><span class="ai-match-badge safe">CLEAR</span></div>
+        <div class="ai-match-reason">Other loans have no photos or item details to compare against. Add photos or item details to loans for AI comparison.</div></div>`;
+      return;
+    }
+
+    // Step 3: Compare
+    const otherDescs = comparableLoans.map(l => ({
+      loanName: l.name, loanDate: l.loanDate, amount: l.amount, description: l._desc
+    }));
     const results = await geminiCompare(currentDesc, otherDescs, apiKey);
 
     const highRisk = results.filter(r => r.risk === 'HIGH');
-    const summary  = highRisk.length > 0
+    const summary = highRisk.length > 0
       ? `<div style="background:rgba(232,85,85,0.1);border:1px solid rgba(232,85,85,0.4);border-radius:var(--rs);padding:12px 14px;margin-bottom:14px;font-size:13px;font-weight:600;color:var(--red)">⚠️ ${highRisk.length} HIGH RISK match${highRisk.length>1?'es':''} found — possible duplicate pledge</div>`
       : `<div style="background:rgba(39,201,122,0.07);border:1px solid rgba(39,201,122,0.25);border-radius:var(--rs);padding:12px 14px;margin-bottom:14px;font-size:13px;font-weight:600;color:var(--green)">✅ No high-risk duplicates detected</div>`;
 
@@ -3045,16 +3084,12 @@ window.runOrnamentScan = async function() {
       if (!loan) return '';
       const cls   = res.risk === 'HIGH' ? 'danger' : res.risk === 'MEDIUM' ? 'warn' : 'safe';
       const label = res.risk === 'HIGH' ? '⚠ HIGH RISK' : res.risk === 'MEDIUM' ? '⚡ MEDIUM' : '✓ LOW';
-      return `
-        <div class="ai-match-card ${cls}">
-          <div class="ai-match-card-hd">
-            <span class="ai-match-loan">${loan.loanName}</span>
-            <span class="ai-match-badge ${cls}">${label}</span>
-          </div>
-          <div class="ai-match-reason">${res.reason}</div>
-          <div class="ai-match-meta">Confidence: ${res.confidence}% · ${inr(loan.amount)} · ${fmtDate(loan.loanDate)}</div>
-        </div>`;
-    }).join('') || `<div class="ai-match-card safe"><div class="ai-match-card-hd"><span class="ai-match-loan">All loans checked</span><span class="ai-match-badge safe">ALL CLEAR</span></div><div class="ai-match-reason">No matching ornaments found across ${otherLoans.length} loans.</div></div>`;
+      return `<div class="ai-match-card ${cls}">
+        <div class="ai-match-card-hd"><span class="ai-match-loan">${loan.loanName}</span><span class="ai-match-badge ${cls}">${label}</span></div>
+        <div class="ai-match-reason">${res.reason}</div>
+        <div class="ai-match-meta">Confidence: ${res.confidence}% · ${inr(loan.amount)} · ${fmtDate(loan.loanDate)}</div>
+      </div>`;
+    }).join('') || `<div class="ai-match-card safe"><div class="ai-match-card-hd"><span class="ai-match-loan">All ${comparableLoans.length} loans checked</span><span class="ai-match-badge safe">ALL CLEAR</span></div><div class="ai-match-reason">No matching ornaments found.</div></div>`;
 
     $('ai-match-body').innerHTML = `
       <div class="ai-desc-box">
@@ -3062,9 +3097,10 @@ window.runOrnamentScan = async function() {
         ${currentDesc.description}
         ${currentDesc.distinctive ? `<div style="margin-top:6px;font-weight:600;color:var(--g2)">${currentDesc.distinctive}</div>` : ''}
       </div>
+      <div style="font-size:11px;color:var(--tx2);margin-bottom:10px">Compared against ${comparableLoans.length} of ${otherLoans.length} loans (${otherLoans.length - comparableLoans.length} had no data)</div>
       ${summary}${cards}
       <div style="text-align:center;margin-top:16px">
-        <button onclick="$('gemini-key-input').value='';localStorage.removeItem('${GEMINI_KEY_STORE}');$('gemini-ov').classList.add('open');closeAiMatch()" style="font-size:11px;color:var(--tx2);background:none;border:none;cursor:pointer;text-decoration:underline">Change Gemini API Key</button>
+        <button onclick="localStorage.removeItem('${GEMINI_KEY_STORE}');closeAiMatch();runOrnamentScan()" style="font-size:11px;color:var(--tx2);background:none;border:none;cursor:pointer;text-decoration:underline">Change Gemini API Key</button>
       </div>`;
 
   } catch(err) {
@@ -3073,8 +3109,9 @@ window.runOrnamentScan = async function() {
         <div class="ai-match-card-hd"><span class="ai-match-loan">⚠ Scan Failed</span></div>
         <div class="ai-match-reason">${err.message}</div>
         <div class="ai-match-meta" style="margin-top:8px">
-          ${err.message.includes('API_KEY') || err.message.includes('invalid') ? `
-          <button onclick="localStorage.removeItem('${GEMINI_KEY_STORE}');closeAiMatch();runOrnamentScan()" style="background:rgba(212,161,42,0.1);border:1px solid var(--bd);border-radius:var(--rs);color:var(--g1);padding:8px 14px;font-size:12px;cursor:pointer">🔑 Update API Key</button>` : 'Check your internet connection and try again.'}
+          ${err.message.includes('API_KEY')||err.message.includes('invalid')||err.message.includes('key')
+            ? `<button onclick="localStorage.removeItem('${GEMINI_KEY_STORE}');closeAiMatch();runOrnamentScan()" style="background:rgba(212,161,42,0.1);border:1px solid var(--bd);border-radius:var(--rs);color:var(--g1);padding:8px 14px;font-size:12px;cursor:pointer">🔑 Update API Key</button>`
+            : 'Check your internet connection and try again.'}
         </div>
       </div>`;
   }
@@ -3125,13 +3162,22 @@ window.onStatusChange = function() {
 window.livePreview = function() {
   const ld     = $('f-ld').value;
   const status = $('f-status').value;
-  const rd     = $('f-rd').value || (status === 'Active' ? localDate() : '');
-  const amt    = parseFloat($('f-amt').value) || 0;
-  const rt     = parseFloat($('f-rate').value) || 0;
-  const m      = calcMonths(ld, rd);
-  const i      = (m !== null && amt && rt) ? calcInterest(amt, rt, m) : null;
-  const tot    = i !== null ? amt + i : null;
-  $('pv-m').textContent = m !== null ? (rd && !$('f-rd').value && status==='Active' ? m+'*' : m) : '—';
+  const rdVal  = $('f-rd').value;
+  // Auto-switch status based on release date
+  if (rdVal && status === 'Active') {
+    $('f-status').value = 'Closed';
+    const opt = $('f-rd-opt'); if (opt) opt.style.display = 'none';
+  } else if (!rdVal && status === 'Closed') {
+    $('f-status').value = 'Active';
+    const opt = $('f-rd-opt'); if (opt) opt.style.display = 'inline';
+  }
+  const rd  = rdVal || (($('f-status').value === 'Active') ? localDate() : '');
+  const amt = parseFloat($('f-amt').value) || 0;
+  const rt  = parseFloat($('f-rate').value) || 0;
+  const m   = calcMonths(ld, rd);
+  const i   = (m !== null && amt && rt) ? calcInterest(amt, rt, m) : null;
+  const tot = i !== null ? amt + i : null;
+  $('pv-m').textContent = m !== null ? (rd && !$('f-rd').value && $('f-status').value==='Active' ? m+'*' : m) : '—';
   $('pv-i').textContent = inr(i);
   $('pv-t').textContent = inr(tot);
 };
@@ -3142,7 +3188,10 @@ window.saveLoan = async function() {
   const rd     = $('f-rd').value;
   const amt    = parseFloat($('f-amt').value);
   const rate   = parseFloat($('f-rate').value);
-  const status = $('f-status').value;
+  // Auto-correct status: if release date is set → Closed, else Active
+  let status = $('f-status').value;
+  if (rd && status === 'Active') status = 'Closed';
+  if (!rd && status === 'Closed') status = 'Active';
 
   if (!no)                  { toast('⚠️ Enter Loan Number'); return; }
   if (!ld)                  { toast('⚠️ Select Loan Date'); return; }
@@ -3153,7 +3202,7 @@ window.saveLoan = async function() {
   // Handle receipt
   let receiptData = editId ? (loans.find(l => l.id === editId)?.receipt || null) : null;
   if (pendingReceipt?.removed) receiptData = null;
-  else if (pendingReceipt?.data) receiptData = { data: pendingReceipt.data, type: pendingReceipt.type, name: pendingReceipt.name };
+  else if (pendingReceipt?.data) receiptData = { data: pendingReceipt.data, type: pendingReceipt.type, name: pendingReceipt.name, aiDesc: pendingReceipt.aiDesc || null };
 
   const lObj = { id: editId || uid(), name: no, loanDate: ld, releaseDate: rd, amount: amt, rate, status };
   if (receiptData) lObj.receipt = receiptData;
