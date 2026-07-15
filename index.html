@@ -1374,7 +1374,7 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
     <div class="sheet-body">
       <div class="fg">
         <label class="fl">Loan Number</label>
-        <input class="fi" id="f-no" type="text" placeholder="e.g. GL-2026-001"/>
+        <input class="fi" id="f-no" type="text" placeholder="e.g. GL-2026-001" oninput="checkLoanNumDup(this)"/>
       </div>
       <div class="frow">
         <div class="fg">
@@ -1824,7 +1824,7 @@ const firebaseConfig = {
     'saveCustomer','deleteCustomer','setCustFilter','exportCustomer','exportAllCustomers',
     'openCustDetail','closeCustDetail','custPhotoChosen','custIdFileChosen','openIdImgViewer','openImgViewer',
     'openBulkReminder','closeReminder','markReminderSent',
-    'hallmarkPhotoChosen','viewHallmarkPhoto'];
+    'hallmarkPhotoChosen','viewHallmarkPhoto','checkLoanNumDup'];
   window._pendingCalls = [];
   fns.forEach(name => {
     window[name] = function(...args) {
@@ -3059,32 +3059,23 @@ window.runOrnamentScan = async function() {
       return;
     }
 
-    // Step 2: Describe any other loans that have photos but no aiDesc yet
+    // Step 2: Build comparison data — use stored aiDesc or item text only (no concurrent API calls)
     $('ai-match-body').querySelector('.ai-scan-s').textContent = `Step 2 of 2: Comparing against ${otherLoans.length} loans…`;
 
-    const loansWithDesc = await Promise.all(otherLoans.map(async l => {
-      // Use stored aiDesc if available
-      if (l.receipt?.aiDesc) return { ...l, _desc: l.receipt.aiDesc.description };
-      // Describe photo on-the-fly if has photo but no stored desc
-      if (l.receipt?.data && l.receipt.type !== 'application/pdf') {
-        try {
-          const b64 = l.receipt.data.split(',')[1];
-          const desc = await geminiDescribeImage(b64, l.receipt.type, apiKey);
-          // Save desc back to loan for future scans
-          l.receipt.aiDesc = desc;
-          if (fbOn) fbWrite(l).catch(()=>{}); // persist to Firebase silently
-          return { ...l, _desc: desc.description };
-        } catch { return { ...l, _desc: null }; }
-      }
-      // Fall back to item text data from the loan
+    const loansWithDesc = otherLoans.map(l => {
+      // Priority 1: Use stored AI description
+      if (l.receipt?.aiDesc?.description) return { ...l, _desc: l.receipt.aiDesc.description };
+      // Priority 2: Fall back to item details text (no API call needed)
       if (l.items && l.items.length) {
         const itemText = l.items.map(it =>
-          `${it.type||''} ${it.item||''} ${it.purity||''} ${it.wt?it.wt+'g':''} ${it.huid?'HUID:'+it.huid:''}`
+          [it.type, it.item, it.purity, it.wt?it.wt+'g':'', it.huid?'HUID:'+it.huid:'', it.hallmarkStatus].filter(Boolean).join(' ')
         ).join('; ');
-        return { ...l, _desc: `Items: ${itemText}` };
+        return { ...l, _desc: `Gold items: ${itemText}` };
       }
+      // Priority 3: Receipt exists but no desc yet — note it
+      if (l.receipt?.data) return { ...l, _desc: `Has receipt photo but not yet scanned — loan: ${l.name}, amount: ${l.amount}` };
       return { ...l, _desc: null };
-    }));
+    });
 
     const comparableLoans = loansWithDesc.filter(l => l._desc);
 
@@ -3210,6 +3201,27 @@ window.livePreview = function() {
   $('pv-t').textContent = inr(tot);
 };
 
+window.checkLoanNumDup = function(el) {
+  const val = el.value.trim().toLowerCase();
+  const dup = val && loans.find(l => l.name.trim().toLowerCase() === val && l.id !== editId);
+  el.style.borderColor = dup ? 'var(--red)' : '';
+  el.style.boxShadow   = dup ? '0 0 0 3px rgba(232,85,85,0.15)' : '';
+  let hint = el.nextElementSibling;
+  if (dup) {
+    if (!hint || !hint.classList.contains('dup-hint')) {
+      hint = document.createElement('div');
+      hint.className = 'dup-hint';
+      hint.style.cssText = 'font-size:11px;color:var(--red);margin-top:4px;font-weight:600';
+      el.parentNode.insertBefore(hint, el.nextSibling);
+    }
+    hint.textContent = `⚠️ "${el.value.trim()}" already exists`;
+  } else if (hint?.classList.contains('dup-hint')) {
+    hint.remove();
+    el.style.borderColor = '';
+    el.style.boxShadow   = '';
+  }
+};
+
 window.saveLoan = async function() {
   const no     = $('f-no').value.trim();
   const ld     = $('f-ld').value;
@@ -3226,6 +3238,10 @@ window.saveLoan = async function() {
   if (!rd && status === 'Closed') { toast('⚠️ Release Date required for Closed loans'); return; }
   if (isNaN(amt) || amt<=0) { toast('⚠️ Enter valid amount'); return; }
   if (isNaN(rate)||rate<=0) { toast('⚠️ Enter valid rate'); return; }
+
+  // Duplicate loan number check — exclude current loan when editing
+  const duplicate = loans.find(l => l.name.trim().toLowerCase() === no.toLowerCase() && l.id !== editId);
+  if (duplicate) { toast(`⚠️ Loan number "${no}" already exists`); $('f-no').focus(); return; }
 
   // Handle receipt
   let receiptData = editId ? (loans.find(l => l.id === editId)?.receipt || null) : null;
