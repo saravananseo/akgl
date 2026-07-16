@@ -1184,7 +1184,7 @@ html[data-theme="light"] .cust-card { background: linear-gradient(145deg,#fff,#f
     <div class="metrics">
       <div class="met" id="met-active" onclick="setStatusFilter('Active')" style="cursor:pointer"><div class="met-v" style="color:var(--green)" id="mc">0</div><div class="met-l">Active Loans</div></div>
       <div class="met" id="met-closed" onclick="setStatusFilter('Closed')" style="cursor:pointer"><div class="met-v" style="color:var(--red)" id="mc-cl">0</div><div class="met-l">Closed Loans</div></div>
-      <div class="met" id="met-active-p" onclick="setStatusFilter('Active')" style="cursor:pointer"><div class="met-v" id="mp">₹0</div><div class="met-l">Active Principal</div></div>
+      <div class="met" id="met-active-p" onclick="setStatusFilter('LowPL')" style="cursor:pointer"><div class="met-v" style="color:#F5A623" id="mp">0</div><div class="met-l">P/L &lt; ₹5K</div></div>
       <div class="met" id="met-overdue" onclick="setStatusFilter('Overdue')" style="cursor:pointer"><div class="met-v" style="color:#F5A623" id="mc-overdue">0</div><div class="met-l">Overdue Loans</div></div>
     </div>
   </div>
@@ -2114,11 +2114,14 @@ window.setStatusFilter = function(status) {
   });
   if (statusFilter === 'Active') {
     $('met-active') && ($('met-active').style.background = 'rgba(39,201,122,0.12)');
-    $('met-active-p') && ($('met-active-p').style.background = 'rgba(39,201,122,0.12)');
   } else if (statusFilter === 'Closed') {
     $('met-closed') && ($('met-closed').style.background = 'rgba(232,85,85,0.12)');
   } else if (statusFilter === 'Overdue') {
     $('met-overdue') && ($('met-overdue').style.background = 'rgba(245,166,35,0.15)');
+  } else if (statusFilter === 'LowPL') {
+    $('met-active-p') && ($('met-active-p').style.background = 'rgba(245,166,35,0.15)');
+  } else if (statusFilter === 'LowPL') {
+    $('met-active-p') && ($('met-active-p').style.background = 'rgba(245,166,35,0.15)');
   }
   switchNav('loans');
   renderLoans();
@@ -2138,13 +2141,34 @@ function renderLoans() {
       const days = Math.floor((new Date(localDate()+'T00:00:00') - new Date(l.loanDate+'T00:00:00')) / (1000*60*60*24));
       return days >= 365;
     });
+  } else if (statusFilter === 'LowPL') {
+    const GR = liveGoldRate22K;
+    const gf = {'24K':24/22,'22K':1,'18K':18/22,'14K':14/22};
+    const sf = {'Silver 999':1,'Silver 925':0.925,'Silver 800':0.8};
+    list = list.filter(l => {
+      if (l.status !== 'Active' || !l.items?.length) return false;
+      const m = calcMonths(l.loanDate, localDate());
+      const due = l.amount + (m ? calcInterest(l.amount, l.rate, m) : 0);
+      let val80 = 0;
+      l.items.forEach(it => {
+        let v = parseFloat(it.value)||0;
+        if (!v && it.wt) {
+          const w = parseFloat(it.wt)||0, p = it.purity||'22K';
+          v = p.startsWith('Silver') ? Math.round(w*105*(sf[p]??1)) : Math.round(w*GR*(gf[p]??1));
+        }
+        val80 += Math.round(v*0.8);
+      });
+      return val80 > 0 && (val80 - due) < 5000;
+    });
   }
   const el = $('loan-list');
 
   // Build HTML first, then set in one shot to avoid blank flash
   let html = '';
   if (!list.length) {
-    const filterMsg = statusFilter ? `No ${statusFilter === 'Overdue' ? 'overdue' : statusFilter.toLowerCase()} loans found.` : (loans.length === 0 ? 'Tap + to record your first gold loan.' : 'Try a different loan number.');
+    const filterMsg = statusFilter
+      ? `No ${statusFilter === 'Overdue' ? 'overdue' : statusFilter === 'LowPL' ? 'low P/L' : statusFilter.toLowerCase()} loans found.`
+      : (loans.length === 0 ? 'Tap + to record your first gold loan.' : 'Try a different loan number.');
     html = `<div class="empty">
       <div class="empty-ic">🪙</div>
       <div class="empty-t">${loans.length === 0 ? 'No Loans Yet' : 'No Results'}</div>
@@ -2213,7 +2237,7 @@ function renderLoans() {
       </div>
       <div class="card-items-body" id="cibody-${l.id}">
         <table class="items-tbl">
-          <thead><tr><th>Type</th><th>Item</th><th>Qty</th><th>Gross Wt</th><th>Net Wt</th><th>Purity</th><th>Hallmark</th><th>Value</th><th>80% Val</th><th>P/L</th></tr></thead>
+          <thead><tr><th>Type</th><th>Item</th><th>Qty</th><th>Gross Wt</th><th>Net Wt</th><th>Purity</th><th>Hallmark</th><th>Value</th><th>80% Val</th><th>P/L (80%)</th></tr></thead>
           <tbody>
             ${(()=>{
               const GOLD_RATE_22K = liveGoldRate22K;
@@ -2249,7 +2273,8 @@ function renderLoans() {
                 const gwt = parseFloat(it.gwt)||0;
                 // P/L = item market value − item's proportional share of total due (by net weight)
                 const wtShare = totalNetWt > 0 ? (nwt/totalNetWt) * totalDue : 0;
-                const pl = val > 0 && wtShare > 0 ? val - wtShare : null;
+                const val80pl = val80; // use 80% value for P/L
+                const pl = val80pl > 0 && wtShare > 0 ? val80pl - wtShare : null;
                 const plHtml = pl !== null
                   ? `<span class="${pl>=0?'itbl-profit':'itbl-loss'}">${pl>=0?'+':''}${inr(pl)}</span>`
                   : '—';
@@ -2305,11 +2330,11 @@ function renderLoans() {
                 totalNwt  += parseFloat(it.wt)||0;
               });
               const total80 = Math.round(totalVal * 0.8);
-              // Total P/L = total market value − total due (principal + interest)
+              // Total P/L = 80% of market value − total due (principal + interest)
               const effRd3 = l.releaseDate || (l.status==='Active' ? localDate() : null);
               const m3 = effRd3 ? calcMonths(l.loanDate, effRd3) : 0;
               const loanTotalDue = (l.amount||0) + (m3 ? calcInterest(l.amount, l.rate, m3) : 0);
-              const diff = totalVal - loanTotalDue;
+              const diff = total80 - loanTotalDue;
               const plHtml = totalVal > 0
                 ? `<span class="${diff>=0?'itbl-profit':'itbl-loss'}">${diff>=0?'+':''}${inr(diff)}</span>`
                 : '—';
@@ -2417,7 +2442,32 @@ function renderStats() {
   }).length;
   $('mc').textContent       = actLoans.length;
   $('mc-cl').textContent    = clLoans.length;
-  $('mp').textContent       = inr(actP);
+  // Count active loans where 80% collateral value < total due by less than ₹5000 (P/L < ₹5000)
+  const GOLD_RATE = liveGoldRate22K;
+  const goldFactorsM = {'24K':24/22,'22K':1,'18K':18/22,'14K':14/22};
+  const silverBaseM = 105;
+  const silverFactorsM = {'Silver 999':1,'Silver 925':0.925,'Silver 800':0.8};
+  let lowPLCount = 0;
+  actLoans.forEach(l => {
+    if (!l.items || !l.items.length) return;
+    const rd2 = l.releaseDate || today;
+    const m2  = calcMonths(l.loanDate, rd2);
+    const due = l.amount + (m2 ? calcInterest(l.amount, l.rate, m2) : 0);
+    let totalVal80 = 0;
+    l.items.forEach(it => {
+      let val = parseFloat(it.value)||0;
+      if (!val && it.wt) {
+        const wt = parseFloat(it.wt)||0;
+        const p  = it.purity||'22K';
+        val = p.startsWith('Silver')
+          ? Math.round(wt * silverBaseM * (silverFactorsM[p]??1))
+          : Math.round(wt * GOLD_RATE * (goldFactorsM[p]??(22/22)));
+      }
+      totalVal80 += Math.round(val * 0.8);
+    });
+    if (totalVal80 > 0 && (totalVal80 - due) < 5000) lowPLCount++;
+  });
+  $('mp').textContent       = lowPLCount;
   $('mc-overdue').textContent = overdueCount;
 
   // ── Stats page ──
