@@ -2689,7 +2689,7 @@ function renderItemsForm() {
           </div>
           <div>
             <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Hallmark Year</div>
-            <input class="item-fi" type="text" placeholder="e.g. 2023" maxlength="4" value="${it.hYear||''}"
+            <input class="item-fi" type="text" placeholder="e.g. 13230" maxlength="4" value="${it.hYear||''}"
               oninput="itemUpdate(${i},'hYear',this.value)"/>
           </div>
         </div>
@@ -2727,7 +2727,7 @@ function renderItemsForm() {
 const PURITY_FACTOR = { '24K': 1.0, '22K': 22/24, '18K': 18/24, '14K': 14/24 };
 
 // Module-level live gold rate — updated whenever fetched
-let liveGoldRate22K = 13315; // fallback: today's known rate
+let liveGoldRate22K = 13230; // fallback: today's known rate
 
 const GOLD_API_KEY_STORE = 'ak_goldapi_key_v1';
 
@@ -2737,7 +2737,11 @@ async function fetchLiveGoldRate(silent = false) {
 
   let inrPer22k = null;
 
-  // ── Source 1: GoldAPI.io (free tier, returns INR directly) ──
+  // Indian retail 22K = international spot + ~15% import duty + 3% GST + ~11% margin = ~29% premium
+  const INDIA_PREMIUM = 1.285;
+  const RATE_MIN = 11000, RATE_MAX = 25000; // tighter bounds: won't accept raw international spot
+
+  // ── Source 1: GoldAPI.io (returns actual Indian retail price_gram_22k) ──
   const goldApiKey = localStorage.getItem(GOLD_API_KEY_STORE);
   if (goldApiKey) {
     try {
@@ -2746,42 +2750,39 @@ async function fetchLiveGoldRate(silent = false) {
       });
       if (res.ok) {
         const d = await res.json();
-        if (d.price_gram_22k) { inrPer22k = Math.round(d.price_gram_22k); }
+        if (d.price_gram_22k) {
+          const v = Math.round(d.price_gram_22k);
+          if (v >= RATE_MIN && v <= RATE_MAX) { inrPer22k = v; }
+        }
       }
     } catch {}
   }
 
-  // ── Source 2: open.er-api.com — XAU base gives how many USD per 1 XAU ──
+  // ── Source 2: open.er-api XAU→INR spot × India premium ──
   if (!inrPer22k) {
     try {
-      const [fxRes, xauRes] = await Promise.all([
-        fetch('https://api.frankfurter.app/latest?from=USD&to=INR'),
-        fetch('https://open.er-api.com/v6/latest/XAU')
-      ]);
-      const fxData  = await fxRes.json();
-      const xauData = await xauRes.json();
-      const usdToInr = fxData?.rates?.INR;
-      // XAU base: rates.USD = USD per troy oz of gold
-      const xauUsd = xauData?.rates?.USD;
-      if (usdToInr && xauUsd) {
-        // USD per gram × INR per USD × 22K factor
-        inrPer22k = Math.round((xauUsd / 31.1035) * usdToInr * (22/24));
+      const xauRes = await fetch('https://open.er-api.com/v6/latest/XAU');
+      if (xauRes.ok) {
+        const xauData = await xauRes.json();
+        const inrPerOzSpot = xauData?.rates?.INR; // international spot INR/oz
+        if (inrPerOzSpot && inrPerOzSpot > 200000) {
+          const v = Math.round((inrPerOzSpot / 31.1035) * (22/24) * INDIA_PREMIUM);
+          if (v >= RATE_MIN && v <= RATE_MAX) { inrPer22k = v; }
+        }
       }
     } catch {}
   }
 
-  // ── Source 3: metals-api free endpoint ──
+  // ── Source 3: frankfurter XAU→INR spot × India premium ──
   if (!inrPer22k) {
     try {
-      const res = await fetch('https://metals.live/api/spot?metals=gold');
+      const res = await fetch('https://api.frankfurter.app/latest?from=XAU&to=INR');
       if (res.ok) {
         const data = await res.json();
-        const usdPerOz = data?.[0]?.price || data?.gold;
-        const fxRes = await fetch('https://api.frankfurter.app/latest?from=USD&to=INR');
-        const fxData = await fxRes.json();
-        const usdToInr = fxData?.rates?.INR;
-        if (usdPerOz && usdToInr) {
-          inrPer22k = Math.round((usdPerOz / 31.1035) * usdToInr * (22/24));
+        const inrPerOzSpot = data?.rates?.INR; // international spot INR/oz
+        if (inrPerOzSpot && inrPerOzSpot > 200000) {
+          const v = Math.round((inrPerOzSpot / 31.1035) * (22/24) * INDIA_PREMIUM);
+          if (v >= RATE_MIN && v <= RATE_MAX) { inrPer22k = v; }
         }
       }
     } catch {}
@@ -2789,13 +2790,13 @@ async function fetchLiveGoldRate(silent = false) {
 
   // ── Fallback ──
   if (!inrPer22k) {
-    if (gri) { gri.disabled = false; gri.placeholder = 'e.g. 13315'; if (!gri.value) { gri.value = liveGoldRate22K; onGoldRateChange(); } }
+    if (gri) { gri.disabled = false; gri.placeholder = 'e.g. 13230'; if (!gri.value) { gri.value = liveGoldRate22K; onGoldRateChange(); } }
     if (!silent) toast('⚠️ Live fetch failed — using ₹' + liveGoldRate22K.toLocaleString('en-IN') + '/g');
     return;
   }
 
   liveGoldRate22K = inrPer22k;
-  if (gri) { gri.value = inrPer22k; gri.disabled = false; gri.placeholder = 'e.g. 13315'; onGoldRateChange(); }
+  if (gri) { gri.value = inrPer22k; gri.disabled = false; gri.placeholder = 'e.g. 13230'; onGoldRateChange(); }
   if (!silent) toast('✅ Live 22K rate: ₹' + inrPer22k.toLocaleString('en-IN') + '/g');
   else renderStats();
 }
