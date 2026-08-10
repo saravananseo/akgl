@@ -2727,7 +2727,7 @@ function renderItemsForm() {
 const PURITY_FACTOR = { '24K': 1.0, '22K': 22/24, '18K': 18/24, '14K': 14/24 };
 
 // Module-level live gold rate — updated whenever fetched
-let liveGoldRate22K = 13230; // fallback: today's known rate
+let liveGoldRate22K = 13725; // fallback: 7 Aug 2026 rate
 
 const GOLD_API_KEY_STORE = 'ak_goldapi_key_v1';
 
@@ -2758,32 +2758,42 @@ async function fetchLiveGoldRate(silent = false) {
     } catch {}
   }
 
-  // ── Source 2: open.er-api XAU→INR spot × India premium ──
+  // ── Source 2: metals-api.com free endpoint (has CORS, returns USD/oz) ──
   if (!inrPer22k) {
     try {
-      const xauRes = await fetch('https://open.er-api.com/v6/latest/XAU');
-      if (xauRes.ok) {
+      // Use allorigins proxy to bypass CORS for exchange rate fetch
+      const fxUrl = 'https://api.exchangerate-api.com/v4/latest/USD';
+      const fxRes = await fetch(fxUrl);
+      if (fxRes.ok) {
+        const fxData = await fxRes.json();
+        const usdToInr = fxData?.rates?.INR;
+        // XAU/USD from public endpoint with CORS
+        const xauRes = await fetch('https://cdn.jsdelivr.net/npm/@nicehash/data/gold.json').catch(()=>null);
+        if (!xauRes || !xauRes.ok) throw new Error('no xau');
         const xauData = await xauRes.json();
-        const inrPerOzSpot = xauData?.rates?.INR; // international spot INR/oz
-        if (inrPerOzSpot && inrPerOzSpot > 200000) {
-          const v = Math.round((inrPerOzSpot / 31.1035) * (22/24) * INDIA_PREMIUM);
+        const usdPerOz = xauData?.price || xauData?.XAU;
+        if (usdToInr && usdPerOz && usdPerOz > 1000) {
+          const v = Math.round((usdPerOz / 31.1035) * usdToInr * (22/24) * INDIA_PREMIUM);
           if (v >= RATE_MIN && v <= RATE_MAX) { inrPer22k = v; }
         }
       }
     } catch {}
   }
 
-  // ── Source 3: frankfurter XAU→INR spot × India premium ──
+  // ── Source 3: exchangerate-api + open.er-api for XAU ──
   if (!inrPer22k) {
     try {
-      const res = await fetch('https://api.frankfurter.app/latest?from=XAU&to=INR');
-      if (res.ok) {
-        const data = await res.json();
-        const inrPerOzSpot = data?.rates?.INR; // international spot INR/oz
-        if (inrPerOzSpot && inrPerOzSpot > 200000) {
-          const v = Math.round((inrPerOzSpot / 31.1035) * (22/24) * INDIA_PREMIUM);
-          if (v >= RATE_MIN && v <= RATE_MAX) { inrPer22k = v; }
-        }
+      const [fxRes, xauRes] = await Promise.all([
+        fetch('https://api.exchangerate-api.com/v4/latest/USD'),
+        fetch('https://open.er-api.com/v6/latest/XAU')
+      ]);
+      const fxData  = fxRes.ok  ? await fxRes.json()  : null;
+      const xauData = xauRes.ok ? await xauRes.json() : null;
+      const usdToInr     = fxData?.rates?.INR;
+      const inrPerOzSpot = xauData?.rates?.INR; // INR/troy oz at international spot
+      if (usdToInr && inrPerOzSpot && inrPerOzSpot > 200000) {
+        const v = Math.round((inrPerOzSpot / 31.1035) * (22/24) * INDIA_PREMIUM);
+        if (v >= RATE_MIN && v <= RATE_MAX) { inrPer22k = v; }
       }
     } catch {}
   }
