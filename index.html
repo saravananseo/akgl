@@ -3346,11 +3346,20 @@ window.saveLoan = async function() {
   if (pendingReceipt?.removed) receiptData = null;
   else if (pendingReceipt?.data) receiptData = { data: pendingReceipt.data, type: pendingReceipt.type, name: pendingReceipt.name, aiDesc: pendingReceipt.aiDesc || null };
 
-  const lObj = { id: editId || uid(), name: no, loanDate: ld, releaseDate: rd, amount: amt, rate, status };
+  // Preserve ALL existing loan fields — only override what the form controls
+  const existingLoan = editId ? (loans.find(l => l.id === editId) || {}) : {};
+  const lObj = {
+    ...existingLoan,                        // keep all existing fields
+    id: editId || uid(),
+    name: no, loanDate: ld, releaseDate: rd,
+    amount: amt, rate, status
+  };
   const custId = $('f-cust-id')?.value || '';
-  if (custId) lObj.custId = custId;
-  if (receiptData) lObj.receipt = receiptData;
-  if (itemRows.length) lObj.items = itemRows.filter(it => it.item || it.wt || it.value);
+  if (custId) lObj.custId = custId; else delete lObj.custId;
+  if (receiptData) lObj.receipt = receiptData; else if (pendingReceipt?.removed) delete lObj.receipt;
+  // Save items — keep if any field filled (including hallmark/type)
+  const filteredItems = itemRows.filter(it => it.item || it.wt || it.value || it.type || it.huid || it.hallmarkStatus);
+  if (filteredItems.length) lObj.items = filteredItems; else if (itemRows.length === 0 && existingLoan.items) lObj.items = existingLoan.items;
 
   if (fbOn) {
     closeLoanSheet();
@@ -3808,7 +3817,11 @@ function custLoanStats(c) {
   const cl = getCustLoans(c);
   const today = localDate();
   let totalPrincipal = 0, interestTillDate = 0, interestEarnedClosed = 0;
+  let totalNetWt = 0, totalVal80 = 0;
   const byStatus = { Active: 0, Closed: 0, Overdue: 0 };
+  const gf = {'24K':24/22,'22K':1,'18K':18/22,'14K':14/22};
+  const sf = {'Silver 999':1,'Silver 925':0.925,'Silver 800':0.8};
+
   cl.forEach(l => {
     totalPrincipal += l.amount || 0;
     const rd = l.releaseDate || (l.status === 'Active' ? today : null);
@@ -3816,16 +3829,32 @@ function custLoanStats(c) {
     const i  = m ? calcInterest(l.amount, l.rate, m) : 0;
     if (l.status === 'Active') {
       interestTillDate += i;
-      // Check if overdue >1 year
       const days = Math.floor((new Date(today+'T00:00:00') - new Date(l.loanDate+'T00:00:00')) / (1000*60*60*24));
       if (days >= 365) byStatus.Overdue++;
       else byStatus.Active++;
+      // Sum net weight and 80% value for active loans only
+      if (l.items?.length) {
+        l.items.forEach(it => {
+          const wt = parseFloat(it.wt) || 0;
+          totalNetWt += wt;
+          let val = parseFloat(it.value) || 0;
+          if (!val && wt) {
+            const p = it.purity || '22K';
+            val = p.startsWith('Silver')
+              ? Math.round(wt * 105 * (sf[p] ?? 1))
+              : Math.round(wt * liveGoldRate22K * (gf[p] ?? 1));
+          }
+          totalVal80 += Math.round(val * 0.8);
+        });
+      }
     } else {
       interestEarnedClosed += i;
       byStatus.Closed++;
     }
   });
-  return { loans: cl, totalPrincipal, interestTillDate, interestEarnedClosed, byStatus };
+
+  const total80PlusInterest = totalVal80 + interestTillDate;
+  return { loans: cl, totalPrincipal, interestTillDate, interestEarnedClosed, byStatus, totalNetWt, totalVal80, total80PlusInterest };
 }
 
 // Status color helper
@@ -3889,7 +3918,12 @@ function renderCustomers() {
         <div><div class="cust-cf-l">Principal</div><div class="cust-cf-v">${inr(stats.totalPrincipal)}</div></div>
         <div><div class="cust-cf-l">Interest Accr.</div><div class="cust-cf-v" style="color:var(--green)">${inr(stats.interestTillDate)}</div></div>
         <div><div class="cust-cf-l">Interest Earned</div><div class="cust-cf-v" style="color:var(--g1)">${inr(stats.interestEarnedClosed)}</div></div>
-      </div>` : ''}
+      </div>
+      ${stats.totalNetWt > 0 ? `<div class="cust-card-body" style="border-top:1px solid var(--bd);padding-top:10px">
+        <div><div class="cust-cf-l">⚖️ Net Wt (Active)</div><div class="cust-cf-v">${stats.totalNetWt.toFixed(2)}g</div></div>
+        <div><div class="cust-cf-l">💰 80% Value</div><div class="cust-cf-v" style="color:var(--g2)">${inr(stats.totalVal80)}</div></div>
+        <div><div class="cust-cf-l">📊 80%+Interest</div><div class="cust-cf-v" style="color:${stats.total80PlusInterest>=(stats.totalPrincipal+stats.interestTillDate)?'var(--green)':'var(--red)'};font-weight:700">${inr(stats.total80PlusInterest)}</div></div>
+      </div>` : ''}` : ''}
       <div class="cust-card-foot">
         ${currentRole !== 'staff' ? `<button class="c-btn c-edit" onclick="event.stopPropagation();openCustSheet('${c.id}')">✏️</button>` : ''}
         <button class="c-btn" onclick="event.stopPropagation();exportCustomer('${c.id}')" style="background:rgba(212,161,42,0.1);color:var(--g2)">📤</button>
