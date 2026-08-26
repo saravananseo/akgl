@@ -2000,7 +2000,10 @@ function startListener() {
     snap => {
       // Skip render if we just wrote (local update already applied)
       if (_suppressNextSnapshot) { _suppressNextSnapshot = false; return; }
-      loans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      loans = snap.docs.map(d => {
+        const loan = { id: d.id, ...d.data() };
+        return restoreImagesFromLocal(loan); // rehydrate base64 from localStorage
+      });
       loans.sort((a,b) => (b.loanDate||'').localeCompare(a.loanDate||''));
       if (loans.length === 0) { seedData().forEach(l => fbWrite(l)); return; }
       render();
@@ -2013,13 +2016,69 @@ function startListener() {
 
 let _suppressNextSnapshot = false;
 
+const IMG_STORE_PREFIX = 'ak_img_';
+
+function saveImgLocal(loanId, key, data) {
+  try { localStorage.setItem(IMG_STORE_PREFIX + loanId + '_' + key, JSON.stringify(data)); } catch(e) { console.warn('localStorage full:', e); }
+}
+function loadImgLocal(loanId, key) {
+  try { const v = localStorage.getItem(IMG_STORE_PREFIX + loanId + '_' + key); return v ? JSON.parse(v) : null; } catch { return null; }
+}
+function removeImgLocal(loanId, key) {
+  try { localStorage.removeItem(IMG_STORE_PREFIX + loanId + '_' + key); } catch {}
+}
+
+function stripImagesForFirestore(loan) {
+  const l = JSON.parse(JSON.stringify(loan)); // deep clone
+  const id = l.id;
+  // Strip receipt photo — save to localStorage
+  if (l.receipt?.data) {
+    saveImgLocal(id, 'receipt', l.receipt);
+    l.receipt = { type: l.receipt.type, name: l.receipt.name, aiDesc: l.receipt.aiDesc || null, _local: true };
+  }
+  if (l.lenderReceipt?.data) {
+    saveImgLocal(id, 'lenderReceipt', l.lenderReceipt);
+    l.lenderReceipt = { type: l.lenderReceipt.type, name: l.lenderReceipt.name, _local: true };
+  }
+  // Strip item hallmark photos and values stored as base64
+  if (l.items) {
+    l.items = l.items.map((it, i) => {
+      const item = { ...it };
+      if (item.hPhoto && item.hPhoto.length > 1000) {
+        saveImgLocal(id, 'hphoto_' + i, item.hPhoto);
+        item.hPhoto = '_local_' + i;
+      }
+      return item;
+    });
+  }
+  return l;
+}
+
+function restoreImagesFromLocal(loan) {
+  const l = JSON.parse(JSON.stringify(loan));
+  const id = l.id;
+  if (l.receipt?._local) { const r = loadImgLocal(id, 'receipt'); if (r) l.receipt = r; }
+  if (l.lenderReceipt?._local) { const r = loadImgLocal(id, 'lenderReceipt'); if (r) l.lenderReceipt = r; }
+  if (l.items) {
+    l.items = l.items.map((it, i) => {
+      const item = { ...it };
+      if (typeof item.hPhoto === 'string' && item.hPhoto.startsWith('_local_')) {
+        const r = loadImgLocal(id, 'hphoto_' + i); if (r) item.hPhoto = r;
+      }
+      return item;
+    });
+  }
+  return l;
+}
+
 async function fbWrite(loan) {
   if (!db) return;
-  const { id, ...data } = loan;
+  const stripped = stripImagesForFirestore(loan); // remove base64 before Firestore
+  const { id, ...data } = stripped;
   try {
     _suppressNextSnapshot = true;
     await setDoc(doc(db, 'loans', id), data);
-    // Update local loans array immediately so UI stays fresh
+    // Update local array with FULL data (including images)
     const idx = loans.findIndex(l => l.id === id);
     if (idx !== -1) loans[idx] = loan; else loans.unshift(loan);
     loans.sort((a,b) => (b.loanDate||'').localeCompare(a.loanDate||''));
